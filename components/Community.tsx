@@ -274,7 +274,10 @@ const Community = () => {
           {regularPosts.map((post, index) => (
             <div 
               key={post.id}
-              ref={el => postRefs.current[index] = el}
+              ref={(el) => {
+               postRefs.current[index] = el;
+                                             }}
+
               className="opacity-0 translate-y-4 transition-all duration-500 ease-out"
             >
               <PostCard 

@@ -16,7 +16,7 @@ type RequestBody = {
 };
 
 const DEFAULT_OLLAMA_URL = 'http://127.0.0.1:11434';
-const DEFAULT_MODEL = 'cs-mentor';
+const DEFAULT_MODEL = 'llama3:8b';
 const FALLBACK_SOURCE = 'SyncIn Knowledge Base';
 const DEFAULT_FALLBACK_RESPONSE =
   "I'm still learning and couldn't find an exact answer. Could you add more details so I can help better?";

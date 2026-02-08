@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 
 import { connectToDatabase } from '@/lib/mongodb';
@@ -12,7 +12,10 @@ const joinSchema = z.object({
   collegeName: z.string().trim().optional(),
 });
 
-export async function POST(request: Request, { params }: { params: { collegeId: string } }) {
+export async function POST(
+  request: NextRequest,
+  context: { params: Promise<{ collegeId: string }> }
+) {
   try {
     const payload = await request.json();
     const parseResult = joinSchema.safeParse(payload);
@@ -23,11 +26,13 @@ export async function POST(request: Request, { params }: { params: { collegeId: 
     }
 
     const { profileId, collegeName } = parseResult.data;
-    const collegeId = params.collegeId.trim();
+
+    const { collegeId } = await context.params;
+    const collegeIdTrimmed = collegeId.trim();
 
     await connectToDatabase();
 
-    const user = await User.findOne({ profileId, collegeId }).lean();
+    const user = await User.findOne({ profileId, collegeId: collegeIdTrimmed }).lean();
     if (!user) {
       return NextResponse.json(
         { success: false, error: 'No matching user found for that profile ID and college.' },
@@ -38,9 +43,9 @@ export async function POST(request: Request, { params }: { params: { collegeId: 
     const derivedCollegeName = collegeName ?? user.collegeName ?? 'Unknown College';
 
     const community = await CollegeCommunity.findOneAndUpdate(
-      { collegeId },
+      { collegeId: collegeIdTrimmed },
       {
-        $setOnInsert: { collegeId, collegeName: derivedCollegeName, members: [], posts: [] },
+        $setOnInsert: { collegeId: collegeIdTrimmed, collegeName: derivedCollegeName, members: [], posts: [] },
         $addToSet: { members: profileId },
         $set: { collegeName: derivedCollegeName },
       },

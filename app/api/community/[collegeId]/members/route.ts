@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 
 import { connectToDatabase } from '@/lib/mongodb';
 import CollegeCommunity from '@/models/collegeCommunity';
@@ -6,11 +6,16 @@ import User from '@/models/user';
 
 export const runtime = 'nodejs';
 
-export async function GET(_: Request, { params }: { params: { collegeId: string } }) {
+export async function GET(
+  request: NextRequest,
+  context: { params: Promise<{ collegeId: string }> }
+) {
   try {
     await connectToDatabase();
 
-    const community = await CollegeCommunity.findOne({ collegeId: params.collegeId }).lean();
+    const { collegeId } = await context.params;
+
+    const community = await CollegeCommunity.findOne({ collegeId }).lean();
 
     if (!community) {
       return NextResponse.json({ success: true, data: [] });
@@ -21,7 +26,7 @@ export async function GET(_: Request, { params }: { params: { collegeId: string 
     }
 
     const members = await User.find({
-      collegeId: params.collegeId,
+      collegeId,
       profileId: { $in: community.members },
     })
       .select('username profileId collegeId collegeName skills role joinedAt')
@@ -40,6 +45,9 @@ export async function GET(_: Request, { params }: { params: { collegeId: string 
     return NextResponse.json({ success: true, data: memberSummaries });
   } catch (error) {
     console.error('Error fetching community members:', error);
-    return NextResponse.json({ success: false, error: 'Failed to fetch community members' }, { status: 500 });
+    return NextResponse.json(
+      { success: false, error: 'Failed to fetch community members' },
+      { status: 500 }
+    );
   }
 }

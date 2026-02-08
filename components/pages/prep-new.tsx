@@ -228,7 +228,7 @@ export default function Prep() {
         const data = await response.json()
         setQuestions(data.questions || [])
       } catch (err) {
-        if (err.name !== "AbortError") {
+        if (err instanceof Error && err.name !== "AbortError") {
           setError("Failed to load questions. Please try again later.")
           console.error(err)
         }
@@ -491,7 +491,7 @@ export default function Prep() {
               <div className="flex flex-wrap gap-2 mt-2">
                 {question.difficulty && (
                   <Badge 
-                    variant={difficulty === "hard" ? "destructive" : difficulty === "medium" ? "warning" : "success"}
+                    variant={difficulty === "hard" ? "destructive" : difficulty === "medium" ? "outline" : "default"}
                     className="capitalize"
                   >
                     {question.difficulty}
@@ -548,7 +548,15 @@ export default function Prep() {
               <Button
                 variant={isSolved ? "outline" : "default"}
                 size="sm"
-                onClick={() => recordSolvedQuestion(questionId, !isSolved)}
+                onClick={() => recordSolvedQuestion({ 
+                  id: questionId, 
+                  title: getQuestionTitle(question), 
+                  difficulty: question.difficulty, 
+                  subject: question.subject, 
+                  questionType: getQuestionType(question),
+                  companies: normalizeCompany(question.companyFocus),
+                  domain: question.domain || []
+                })}
                 className={isSolved ? "text-green-400 border-green-500/30 hover:bg-green-500/10" : ""}
               >
                 {isSolved ? "Mark as Unsolved" : "Mark as Solved"}
