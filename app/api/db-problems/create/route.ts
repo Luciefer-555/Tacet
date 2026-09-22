@@ -4,6 +4,8 @@ import DbProblem from '@/models/dbProblem';
 import Company from '@/models/company';
 import { requireAuth, AuthError } from '@/lib/auth';
 import { executeSqlQuery, gradeMongoQuery } from '@/lib/dbSandbox';
+import { validateCollegeIds } from '@/lib/collegeTargeting';
+import { validateSeedDefinition } from '@/lib/datasetValidation';
 
 export const runtime = 'nodejs';
 
@@ -42,6 +44,15 @@ export async function POST(req: Request) {
     return NextResponse.json({ success: false, error: 'Invalid JSON body.' }, { status: 400 });
   }
 
+  let collegeIds: string[] | undefined;
+  if (session.role === 'hiring_manager') {
+    const collegeTargeting = await validateCollegeIds(body.collegeIds);
+    if (!collegeTargeting.valid) {
+      return NextResponse.json({ success: false, error: collegeTargeting.error }, { status: 400 });
+    }
+    collegeIds = collegeTargeting.ids;
+  }
+
   const {
     title,
     description,
@@ -64,6 +75,9 @@ export async function POST(req: Request) {
   if (!schemaDefinition?.trim()) {
     return NextResponse.json({ success: false, error: 'schemaDefinition is required.' }, { status: 400 });
   }
+
+  const seedError = validateSeedDefinition(dbType, schemaDefinition);
+  if (seedError) return NextResponse.json({ success: false, error: seedError }, { status: 400 });
 
   if (!referenceQuery?.trim()) {
     return NextResponse.json({ success: false, error: 'referenceQuery is required.' }, { status: 400 });
@@ -126,7 +140,8 @@ export async function POST(req: Request) {
     postedByRole: session.role,
     problemType: session.role === 'mentor' ? 'class_assignment' : problemType,
     companyId: session.role === 'hiring_manager' ? session.companyId : undefined,
-    collegeId: session.collegeId ?? null,
+    collegeIds: session.role === 'hiring_manager' ? collegeIds : undefined,
+    collegeId: session.role === 'mentor' ? session.collegeId : null,
     classId: session.role === 'mentor' && body.classId ? body.classId : undefined,
   });
 

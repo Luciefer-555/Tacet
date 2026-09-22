@@ -3,6 +3,7 @@ import { Types } from 'mongoose';
 import { connectToDatabase } from '@/lib/mongodb';
 import DbProblem from '@/models/dbProblem';
 import { requireAuth, AuthError } from '@/lib/auth';
+import { getStudentProblemScope } from '@/lib/studentProblemVisibility';
 
 export const runtime = 'nodejs';
 
@@ -26,7 +27,9 @@ export async function GET(
 
   await connectToDatabase();
 
-  const problem = (await DbProblem.findById(problemId).select('+expectedResult +referenceQuery').lean()) as any;
+  const problem = session.role === 'student'
+    ? await DbProblem.findOne({ _id: problemId, ...(await getStudentProblemScope(session.userId, session.collegeId)) }).lean()
+    : await DbProblem.findById(problemId).select('+expectedResult +referenceQuery').lean() as any;
 
   if (!problem) {
     return NextResponse.json({ success: false, error: 'Database problem not found.' }, { status: 404 });

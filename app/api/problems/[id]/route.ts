@@ -4,6 +4,7 @@ import { Types } from 'mongoose';
 import { connectToDatabase } from '@/lib/mongodb';
 import Problem from '@/models/problem';
 import { requireAuth, AuthError } from '@/lib/auth';
+import { getStudentProblemScope } from '@/lib/studentProblemVisibility';
 
 export async function GET(
   _req: Request,
@@ -26,7 +27,9 @@ export async function GET(
   try {
     await connectToDatabase();
 
-    const problem = await Problem.findById(id).lean();
+    const problem = session.role === 'student'
+      ? await Problem.findOne({ _id: id, ...(await getStudentProblemScope(session.userId, session.collegeId)) }).lean()
+      : await Problem.findById(id).lean();
     if (!problem) {
       return NextResponse.json({ success: false, error: 'Problem not found.' }, { status: 404 });
     }

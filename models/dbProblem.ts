@@ -15,6 +15,7 @@ export interface IDbProblem {
   postedByRole: 'hiring_manager' | 'mentor';
   problemType: 'company' | 'class_assignment';
   companyId?: string;
+  collegeIds?: string[];
   collegeId?: string;
   classId?: mongoose.Types.ObjectId;
   createdAt: Date;
@@ -86,6 +87,10 @@ const DbProblemSchema = new Schema<IDbProblem>(
       type: String,
       default: null,
       index: true,
+    },
+    collegeIds: {
+      type: [String],
+      default: undefined,
     },
     collegeId: {
       type: String,

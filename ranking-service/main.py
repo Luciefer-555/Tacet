@@ -142,6 +142,10 @@ def execute_sql_endpoint(req: SqlExecuteRequest):
     conn = sqlite3.connect(":memory:")
     try:
         conn.executescript(req.schemaDefinition)
+        is_valid, validation_error = validate_read_only_query(req.query)
+        if not is_valid:
+            return {"success": False, "results": [], "error": f"Security validation failed: {validation_error}"}
+        conn.execute("PRAGMA query_only = 1;")
         cursor = conn.cursor()
         cursor.execute(req.query)
         cols = [desc[0] for desc in cursor.description] if cursor.description else []

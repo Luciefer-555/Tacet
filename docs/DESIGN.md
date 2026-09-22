@@ -78,6 +78,8 @@ Motion in use (landing only): dither WebGL background, `DecryptedText` scramble 
 | Stats dashboard | `components/pages/wrapped-dashboard.tsx` | Single warm theme; canvas export |
 | Profile | `components/pages/profile.tsx` | Tag input for skills |
 | Classes hub | `components/classes-hub.tsx` | Mentor and student class UI |
+| DbProblem editor | `components/db-problem-editor.tsx` | Student-only SQL/Mongo workspace: schema browser at left, CodeMirror query editor, Run preview, tabular output and literal inline errors; Submit stays in the parent graded form |
+| Dataset upload | `components/pages/problem-statements.tsx` | Creator-only CSV/JSON upload, inferred type confirmation, first-10-row preview; manual seed text remains the fallback |
 | Code editor | CodeMirror in `problem-statements.tsx` | Language picker, Run/Submit |
 | Logo | `components/logo.tsx` | One-swap component for the SVG |
 | Auth pages | `app/login/page.tsx`, `app/signup/page.tsx` | Split screen, accent panel + dark form |

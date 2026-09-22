@@ -119,3 +119,8 @@ Format: **Decision · Context · Options · Why · Consequences.** Rationale I i
 - **Decision:** Require a session before upload path handling; serve only the two allowed directories and allowlisted extensions; enforce lexical and realpath containment; scope submission reads to the submitter or the existing problem ownership scopes; validate writer magic bytes and size.
 - **Why:** Upload URLs are bearer-like file references and must not disclose submissions, traverse the filesystem, serve SVG, or accept disguised content.
 - **Consequences:** Anonymous requests fail before database access; unauthorized submission requests return 404; logos use short private caching and submissions use `private, no-store`.
+
+## D-26 Company-to-college problem targeting
+- **Decision:** Company problems may store `collegeIds: string[]` selected from real student/mentor college IDs. Empty or missing `collegeIds` preserves backward compatibility and means visible to all colleges. Mentor assignments continue using their existing `collegeId` plus approved class membership scope.
+- **Why:** Hiring managers need explicit multi-college targeting without inventing a separate Colleges collection or hiding legacy company problems.
+- **Consequences:** Student list and direct-detail routes apply the same targeting rule; responses remain a student-safe projection with no answer keys or hidden grading data.

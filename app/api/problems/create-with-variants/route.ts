@@ -4,6 +4,7 @@ import Problem from '@/models/problem';
 import Company from '@/models/company';
 import { syncProblemNode } from '@/lib/graphSync';
 import { requireAuth, AuthError } from '@/lib/auth';
+import { validateCollegeIds } from '@/lib/collegeTargeting';
 
 export const runtime = 'nodejs';
 
@@ -46,6 +47,7 @@ export async function POST(req: Request) {
     language?: 'python' | 'java';
     companyName?: string;
     companyIndustry?: string;
+    collegeIds?: unknown;
     // Optional HM override — if provided, replaces the AI-extracted skills.
     requiredSkillsOverride?: { name: string; weight: number }[];
   };
@@ -54,6 +56,15 @@ export async function POST(req: Request) {
     body = await req.json();
   } catch {
     return NextResponse.json({ success: false, error: 'Invalid JSON.' }, { status: 400 });
+  }
+
+  let collegeIds: string[] | undefined;
+  if (session.role === 'hiring_manager') {
+    const collegeTargeting = await validateCollegeIds(body.collegeIds);
+    if (!collegeTargeting.valid) {
+      return NextResponse.json({ success: false, error: collegeTargeting.error }, { status: 400 });
+    }
+    collegeIds = collegeTargeting.ids;
   }
 
   if (!body.rawData?.trim()) {
@@ -122,6 +133,7 @@ export async function POST(req: Request) {
     difficulty: body.difficulty,
     status: 'open',
     companyId: session.role === 'hiring_manager' ? session.companyId : undefined,
+    collegeIds: session.role === 'hiring_manager' ? collegeIds : undefined,
     collegeId: session.role === 'mentor' ? session.collegeId : undefined,
     problemType: session.role === 'mentor' ? 'class_assignment' : 'company',
     problemFormat: isCoding ? 'coding' : 'open_ended',

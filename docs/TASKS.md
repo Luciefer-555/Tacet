@@ -35,6 +35,9 @@ Effort: **S** = under half a day, **M** = 1–2 days, **L** = 3+ days. Update st
 ### T-08 Demo mode with seeded data (M)
 **Goal:** A fresh login looks alive in 10 seconds.
 **Acceptance:** About 8 realistic problems across all formats, 20–30 fake students, ranked submissions, 1 company, 1 mentor with a class. Idempotent seed script that only touches records tagged as demo. One command to reset. Never runs against production data by accident.
+**Current dependency:** Company problems support optional multi-college targeting through `collegeIds`; empty/missing targets remain visible to all colleges for backward compatibility.
+
+**Current implementation note:** DbProblem creators can upload one CSV table for SQL or one JSON document array for Mongo; the form infers editable types, previews the first 10 rows, and stores the existing `schemaDefinition` string. Students have a scoped Run preview beside the graded Submit action.
 
 ### T-09 Real empty states everywhere (S)
 **Goal:** Every blank panel tells the user what to do next.

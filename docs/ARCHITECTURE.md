@@ -115,9 +115,9 @@ Collection names below are Mongoose defaults and `UNVERIFIED`. Field lists are w
 |---|---|
 | **User** | `profileId`, `username`, `role`, `passwordHash` (never returned), `collegeId` (string, e.g. `CAMPUS_DEFAULT`), `collegeName`, `companyId`, `emailVerified`, `loggedOutAt`, profile fields (full name, college, branch, year, skills[], avatarUrl), reset/recovery fields (never returned). **Known smell:** for hiring managers `collegeName` historically held the company name |
 | **Company** | `name`, `logoUrl`, `website`, `description`. Onboarding required before a hiring manager can post |
-| **Problem** | `problemType: 'company' \| 'class_assignment'`, `postedByRole: hiring_manager \| mentor`, `format` (open-ended / coding), `gradingMode: 'stdin_stdout' \| 'function_signature'` (default `stdin_stdout`), test cases (hidden ones filtered for students), `referenceSolution` (`select:false`), variants + rubric/dataset, `collegeId`/`companyId`/`classId` scope. Validated by `$jsonSchema` |
+| **Problem** | `problemType: 'company' \| 'class_assignment'`, `postedByRole: hiring_manager \| mentor`, `format` (open-ended / coding), `gradingMode: 'stdin_stdout' \| 'function_signature'` (default `stdin_stdout`), test cases (hidden ones filtered for students), `referenceSolution` (`select:false`), variants + rubric/dataset, `collegeId`/`companyId`/`classId` scope, and optional `collegeIds[]` targeting for company problems. Missing/empty `collegeIds` means all colleges. Validated by `$jsonSchema` |
 | **Submission** | Unique index `{problemId, studentId}`. `content` (optional), `fileUrl`, `fileType`, `extractedContent`, per-test-case results, `aiScore` + rationale (absent on gate-failed submissions), sandbox telemetry (time/memory) |
-| **DbProblem** | `dbType: 'sql' \| 'mongodb'`, seed data, `expectedResult` and `referenceQuery` (both `select:false`), `collegeId` is a **String** |
+| **DbProblem** | `dbType: 'sql' \| 'mongodb'`, seed data, `expectedResult` and `referenceQuery` (both `select:false`), `collegeId` is a **String**, and optional `collegeIds[]` targeting for company problems |
 | **DbSubmission** | Unique index `{problemId, studentId}`. Deterministic grading result |
 | **Class** | Mentor-owned, college-scoped, unique `classId`, hashed password, generated QR |
 | **ClassMembership** | Unique per class+student; status `pending \| approved \| rejected` |
@@ -144,6 +144,7 @@ This inventory was generated from the current filesystem (`app/api/**/route.ts` 
 | GET | `/api/company/me` | yes | Company |
 | POST | `/api/company/onboard` | yes | Company |
 | GET | `/api/db-problems/[problemId]` | yes | DbProblem |
+| POST | `/api/db-problems/[problemId]/preview` | student | DbProblem (read-only preview) |
 | POST | `/api/db-problems/create` | yes | Company, DbProblem |
 | POST | `/api/db-submissions/create` | yes | DbProblem, DbSubmission |
 | GET | `/api/db-submissions/for-problem/[problemId]` | yes | DbProblem, DbSubmission, User |
@@ -153,6 +154,7 @@ This inventory was generated from the current filesystem (`app/api/**/route.ts` 
 | POST | `/api/problems/create-with-variants` | yes | Company, Problem |
 | POST | `/api/problems/create` | yes | Class, Company, Problem |
 | GET | `/api/problems` | yes | DbProblem, DbSubmission, Problem, Submission |
+| GET | `/api/colleges` | yes | User (distinct student/mentor college IDs) |
 | GET | `/api/stats/hiring-manager` | yes | DbProblem, DbSubmission, Problem, Submission |
 | GET | `/api/stats/mentor` | yes | DbProblem, DbSubmission, Problem, Submission |
 | GET | `/api/stats/student` | yes | DbProblem, DbSubmission, Problem, Submission, User |
@@ -178,6 +180,12 @@ This inventory was generated from the current filesystem (`app/api/**/route.ts` 
 | GET | `/uploads/[...path]` | yes | Submission, Problem (submissions only) |
 
 `/api/pages-router` does not exist in the current filesystem. The file-backed uploads are written by `/api/company/onboard` and `/api/submissions/create`, then served by `/uploads/[...path]`; serving requires authentication and applies the existing submission ownership scopes.
+
+For `GET /api/problems`, students receive only `{ id, title, format, companyName, className, postedAt }`, scoped to targeted company problems or approved same-college class assignments. `GET /api/problems/[id]` and `GET /api/db-problems/[problemId]` apply the same scope; student responses never include answer keys, hidden tests, rubrics, or dataset internals. Hiring managers and mentors retain the existing management list shape.
+
+`POST /api/db-problems/[problemId]/preview` accepts `{ query }` for an authorized, visible student problem and returns `{ success, results, error }`. It does not create a Submission or DbSubmission and never loads referenceQuery/expectedResult. SQL previews use the same read-only validator and SQLite `PRAGMA query_only`; Mongo previews use the existing rejected-operator checks and ephemeral `tmp_eval_*` collection path. `DbProblemEditor` renders the read-only schema/collection browser, CodeMirror query editor, Run preview output, and inline errors; Submit remains the existing graded path.
+
+DbProblem creation accepts the existing `schemaDefinition` string. The form can populate it from one CSV file (one SQL table: inferred `int|float|date|text` columns plus generated DDL/inserts) or one JSON array (Mongo documents), with a 2 MB / 1,000-row cap, editable inferred types, and a first-10-row preview. Manual seed-definition entry remains available.
 
 ### ranking-service (FastAPI, internal)
 

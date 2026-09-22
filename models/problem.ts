@@ -25,6 +25,7 @@ export interface ProblemDocument extends Document {
   difficulty: string;
   status: string;
   companyId?: string;
+  collegeIds?: string[];
   collegeId?: string;
   classId?: Types.ObjectId;
   timeLimit?: number;
@@ -76,6 +77,7 @@ const ProblemSchema = new Schema<ProblemDocument>(
       enum: ['open', 'closed', 'draft'],
     },
     companyId: { type: String, trim: true },
+    collegeIds: { type: [String], default: undefined },
     collegeId: { type: String, trim: true, index: true },
     classId: { type: Schema.Types.ObjectId, ref: 'Class', default: null, index: true },
     timeLimit: { type: Number, default: null },

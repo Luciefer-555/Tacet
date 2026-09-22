@@ -46,6 +46,8 @@ import CodeMirror from "@uiw/react-codemirror"
 import { python } from "@codemirror/lang-python"
 import { java } from "@codemirror/lang-java"
 import { MentorClassesSection, StudentClassJoinBar, TimedTestController } from "@/components/classes-hub"
+import { DbProblemEditor } from "@/components/db-problem-editor"
+import { buildSqlSeed, DATASET_MAX_BYTES, parseCsv, parseMongoJson, type DatasetColumn, type DatasetType } from "@/lib/datasetParser"
 
 // ─── Types ─────────────────────────────────────────────────────────────────
 
@@ -438,6 +440,19 @@ function StudentView() {
       {/* ── Campus Classes Bar ── */}
       <StudentClassJoinBar />
 
+      <Card className="rounded-2xl border border-[#E8E2D9] bg-white p-6 shadow-sm">
+        <div className="mb-4">
+          <h2 className="font-serif text-2xl font-normal tracking-tight text-[#1A1A1A]">Available Problems</h2>
+          <p className="text-xs text-[#78716C] font-sans mt-0.5">Choose a problem to start. You can still paste an ID below.</p>
+        </div>
+        <MyProblemsList
+          onSelectProblem={(id) => setProblemId(id)}
+          selectedProblemId={problemId || null}
+          refreshKey={0}
+          studentMode
+        />
+      </Card>
+
       {/* ── Submission form ── */}
       <Card className="rounded-2xl border border-[#E8E2D9] bg-white p-6 sm:p-8 shadow-sm">
         <div className="flex items-center gap-3 mb-6">
@@ -500,36 +515,7 @@ function StudentView() {
           {/* DB Query editor OR Coding editor OR text/file tabs */}
           {problemMeta?.problemFormat === "db_query" ? (
             <div className="space-y-4">
-              <div className="rounded-xl border border-[#E8E2D9] bg-[#FAF7F2] p-3.5 space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-semibold text-[#1A1A1A] font-sans flex items-center gap-1.5">
-                    <Database className="h-3.5 w-3.5 text-[#3F3FF3]" />
-                    {problemMeta.dbType === "sql" ? "Schema & Fixtures (SQL)" : "Document Fixtures (MongoDB JSON)"}
-                  </span>
-                  <Badge className="text-xs bg-white text-[#57534E] border border-[#E8E2D9]">
-                    {problemMeta.resultComparisonMode}
-                  </Badge>
-                </div>
-                <pre className="text-xs text-[#1A1A1A] font-mono overflow-x-auto p-3 bg-white border border-[#E8E2D9] rounded-lg max-h-48 whitespace-pre">
-                  {problemMeta.schemaDefinition}
-                </pre>
-              </div>
-
-              <div className="rounded-xl border border-[#E8E2D9] overflow-hidden shadow-sm">
-                <CodeMirror
-                  value={codeContent}
-                  onChange={setCodeContent}
-                  extensions={[java()]}
-                  theme="dark"
-                  height="220px"
-                  placeholder={
-                    problemMeta.dbType === "sql"
-                      ? "-- Write your SQL query here (e.g. SELECT ...)\n"
-                      : '// Write your JSON filter or pipeline (e.g. {"role": "dev"})\n'
-                  }
-                  className="text-sm"
-                />
-              </div>
+              <DbProblemEditor dbType={problemMeta.dbType === "mongodb" ? "mongodb" : "sql"} schemaDefinition={problemMeta.schemaDefinition || ""} problemId={problemId.trim()} value={codeContent} onChange={setCodeContent} />
             </div>
           ) : isCodingProblem ? (
             <div className="space-y-4">
@@ -1020,6 +1006,10 @@ function UnifiedAddProblemForm({
   )
   const [referenceQuery, setReferenceQuery] = useState("SELECT id, name FROM users WHERE role = 'engineer'")
   const [resultComparisonMode, setResultComparisonMode] = useState<"unordered" | "ordered">("unordered")
+  const [datasetColumns, setDatasetColumns] = useState<DatasetColumn[]>([])
+  const [datasetRows, setDatasetRows] = useState<Record<string, unknown>[]>([])
+  const [datasetFileName, setDatasetFileName] = useState("")
+  const [datasetError, setDatasetError] = useState<string | null>(null)
 
   // Open-ended mode toggle
   const [openEndedMode, setOpenEndedMode] = useState<"manual" | "variants">("manual")
@@ -1033,6 +1023,8 @@ function UnifiedAddProblemForm({
 
   const [mentorClasses, setMentorClasses] = useState<Array<{ id: string; name: string; classId: string }>>([])
   const [selectedClassId, setSelectedClassId] = useState<string>("none")
+  const [collegeOptions, setCollegeOptions] = useState<Array<{ id: string; name: string }>>([])
+  const [selectedCollegeIds, setSelectedCollegeIds] = useState<string[]>([])
   const [timeLimit, setTimeLimit] = useState<string>("")
 
   useEffect(() => {
@@ -1049,6 +1041,14 @@ function UnifiedAddProblemForm({
       }
     }
     fetchClasses()
+  }, [isMentor])
+
+  useEffect(() => {
+    if (isMentor) return
+    fetch("/api/colleges")
+      .then((res) => (res.ok ? res.json() : null))
+      .then((json) => setCollegeOptions(json?.colleges || []))
+      .catch(() => setCollegeOptions([]))
   }, [isMentor])
 
   // Ensure function-signature is only active for Java
@@ -1068,6 +1068,46 @@ function UnifiedAddProblemForm({
     setForm({ title: "", description: "", difficulty: "Medium" })
     setCreatedProblemId(null)
     setStatus(null)
+    setDatasetColumns([])
+    setDatasetRows([])
+    setDatasetFileName("")
+    setDatasetError(null)
+  }
+
+  const updateDatasetColumnType = (name: string, type: DatasetType) => {
+    const columns = datasetColumns.map((column) => column.name === name ? { ...column, type } : column)
+    setDatasetColumns(columns)
+    if (problemType === "sql") setSchemaDefinition(buildSqlSeed(datasetFileName || "uploaded_data", columns, datasetRows as Record<string, string>[]))
+    if (problemType === "mongodb") {
+      const rows = datasetRows.map((row) => {
+        if (!(name in row) || row[name] === null || row[name] === undefined) return row
+        const value = row[name]
+        const converted = type === "int" ? Number.parseInt(String(value), 10) : type === "float" ? Number.parseFloat(String(value)) : type === "date" ? String(value) : String(value)
+        return { ...row, [name]: Number.isNaN(converted as number) ? value : converted }
+      })
+      setDatasetRows(rows)
+      setSchemaDefinition(JSON.stringify(rows, null, 2))
+    }
+  }
+
+  const handleDatasetUpload = async (file: File) => {
+    setDatasetError(null)
+    if (file.size > DATASET_MAX_BYTES) { setDatasetError("Dataset files must be 2 MB or smaller."); return }
+    try {
+      const text = await file.text()
+      setDatasetFileName(file.name)
+      if (problemType === "sql") {
+        const parsed = parseCsv(text, file.name)
+        setDatasetColumns(parsed.columns)
+        setDatasetRows(parsed.rows)
+        setSchemaDefinition(buildSqlSeed(parsed.table, parsed.columns, parsed.rows))
+      } else {
+        const parsed = parseMongoJson(text)
+        setDatasetColumns(parsed.columns)
+        setDatasetRows(parsed.docs)
+        setSchemaDefinition(JSON.stringify(parsed.docs, null, 2))
+      }
+    } catch (err) { setDatasetError(err instanceof Error ? err.message : "Could not parse dataset.") }
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -1176,6 +1216,9 @@ function UnifiedAddProblemForm({
 
       if (isMentor && selectedClassId && selectedClassId !== "none") {
         payload.classId = selectedClassId
+      }
+      if (!isMentor && selectedCollegeIds.length > 0) {
+        payload.collegeIds = selectedCollegeIds
       }
       if (timeLimit.trim()) {
         payload.timeLimit = Number(timeLimit.trim())
@@ -1473,6 +1516,23 @@ function UnifiedAddProblemForm({
                       onChange={(e) => setTimeLimit(e.target.value)}
                       className="bg-[#FAF7F2] border-[#E8E2D9] text-[#1A1A1A] text-xs h-9"
                     />
+                  </div>
+                </div>
+              )}
+              {!isMentor && (
+                <div className="space-y-2 pt-2 border-t border-[#E8E2D9]/60">
+                  <Label className="text-xs font-medium text-[#1A1A1A]">Visible to colleges</Label>
+                  <p className="text-[11px] text-[#78716C]">Leave empty to make this problem visible to all colleges.</p>
+                  <div className="flex flex-wrap gap-2">
+                    {collegeOptions.map((college) => (
+                      <label key={college.id} className="flex items-center gap-2 rounded-lg border border-[#E8E2D9] bg-[#FAF7F2] px-3 py-2 text-xs text-[#1A1A1A]">
+                        <Checkbox
+                          checked={selectedCollegeIds.includes(college.id)}
+                          onCheckedChange={(checked) => setSelectedCollegeIds((current) => checked ? [...current, college.id] : current.filter((id) => id !== college.id))}
+                        />
+                        {college.name} ({college.id})
+                      </label>
+                    ))}
                   </div>
                 </div>
               )}
@@ -1824,6 +1884,15 @@ function UnifiedAddProblemForm({
                 className="min-h-[110px] bg-[#FAF7F2] border-[#E8E2D9] text-[#1A1A1A] font-mono text-xs resize-none focus:border-[#1A1A1A] focus:bg-white"
                 required
               />
+              <div className="rounded-xl border border-dashed border-[#A8A29E] bg-[#FAF7F2] p-3 space-y-3">
+                <div className="flex items-center justify-between gap-3">
+                  <div><p className="text-xs font-semibold text-[#1A1A1A]">Upload dataset</p><p className="text-[11px] text-[#78716C]">{problemType === "sql" ? "One CSV file becomes one table." : "A JSON array becomes the Mongo documents."} Max 2 MB / 1,000 rows.</p></div>
+                  <Input type="file" accept={problemType === "sql" ? ".csv,text/csv" : ".json,application/json"} onChange={(e) => e.target.files?.[0] && handleDatasetUpload(e.target.files[0])} className="max-w-[230px] text-xs" />
+                </div>
+                {datasetError && <p className="text-xs text-red-700">{datasetError}</p>}
+                {datasetColumns.length > 0 && <div className="space-y-2"><p className="text-[11px] font-semibold text-[#1A1A1A]">Confirm inferred types{datasetFileName ? ` · ${datasetFileName}` : ""}</p><div className="flex flex-wrap gap-2">{datasetColumns.map((column) => <label key={column.name} className="flex items-center gap-1 rounded-lg border border-[#E8E2D9] bg-white px-2 py-1 text-xs"><span>{column.name}</span><select value={column.type} onChange={(e) => updateDatasetColumnType(column.name, e.target.value as DatasetType)} className="rounded border border-[#E8E2D9] bg-white px-1 py-0.5 text-xs"><option value="int">int</option><option value="float">float</option><option value="date">date</option><option value="text">text</option></select></label>)}</div></div>}
+                {datasetRows.length > 0 && <div className="overflow-x-auto rounded-lg border border-[#E8E2D9] bg-white"><table className="min-w-full text-left text-[11px]"><thead><tr>{datasetColumns.map((column) => <th key={column.name} className="px-2 py-1.5 font-semibold">{column.name}</th>)}</tr></thead><tbody>{datasetRows.slice(0, 10).map((row, index) => <tr key={index} className="border-t border-[#E8E2D9]">{datasetColumns.map((column) => <td key={column.name} className="max-w-[180px] truncate px-2 py-1.5">{typeof row[column.name] === "object" ? JSON.stringify(row[column.name]) : String(row[column.name] ?? "")}</td>)}</tr>)}</tbody></table></div>}
+              </div>
             </div>
 
             <div className="space-y-2">
@@ -1891,13 +1960,16 @@ interface ProblemListItem {
   title: string
   description?: string
   format: string
+  companyName?: string | null
+  className?: string | null
+  postedAt?: string
   gradingMode?: string | null
   language?: string | null
-  difficulty: string
-  status: string
-  submissionCount: number
-  isDbProblem: boolean
-  createdAt: string
+  difficulty?: string
+  status?: string
+  submissionCount?: number
+  isDbProblem?: boolean
+  createdAt?: string
 }
 
 function MyProblemsList({
@@ -1905,11 +1977,13 @@ function MyProblemsList({
   selectedProblemId,
   refreshKey,
   isMentor,
+  studentMode,
 }: {
   onSelectProblem: (id: string, isDb: boolean) => void
   selectedProblemId: string | null
   refreshKey: number
   isMentor?: boolean
+  studentMode?: boolean
 }) {
   const [problems, setProblems] = useState<ProblemListItem[]>([])
   const [loading, setLoading] = useState(true)
@@ -1953,6 +2027,13 @@ function MyProblemsList({
   }
 
   if (problems.length === 0) {
+    if (studentMode) {
+      return (
+        <div className="rounded-xl border border-[#E8E2D9] bg-[#FAF7F2] p-6 text-center">
+          <p className="text-sm text-[#78716C]">No problems yet — check back soon</p>
+        </div>
+      )
+    }
     return (
       <div className="rounded-xl border border-[#E8E2D9] bg-[#FAF7F2] p-8 text-center space-y-2">
         <FileText className="h-8 w-8 text-[#A8A29E] mx-auto" />
@@ -1979,6 +2060,26 @@ function MyProblemsList({
       <div className="divide-y divide-[#E8E2D9] rounded-xl border border-[#E8E2D9] bg-white overflow-hidden shadow-sm">
         {problems.map((prob) => {
           const isSelected = selectedProblemId === prob.id
+          if (studentMode) {
+            return (
+              <button
+                type="button"
+                key={prob.id}
+                onClick={() => onSelectProblem(prob.id, prob.format === "sql" || prob.format === "mongodb")}
+                className={`w-full p-4 text-left transition-colors flex items-center justify-between gap-3 ${isSelected ? "bg-[#FAF7F2] border-l-4 border-l-[#1A1A1A]" : "hover:bg-[#FAF7F2]"}`}
+              >
+                <span className="min-w-0 space-y-1">
+                  <span className="block truncate text-sm font-semibold text-[#1A1A1A]">{prob.title}</span>
+                  <span className="flex flex-wrap gap-2 text-xs text-[#78716C]">
+                    <span>{prob.format.toUpperCase()}</span>
+                    {(prob.companyName || prob.className) && <span>• {prob.companyName || prob.className}</span>}
+                    {prob.postedAt && <span>• {new Date(prob.postedAt).toLocaleDateString()}</span>}
+                  </span>
+                </span>
+                <ChevronRight className="h-4 w-4 shrink-0 text-[#78716C]" />
+              </button>
+            )
+          }
           let formatBadgeText = prob.format.toUpperCase()
           if (prob.format === "coding") {
             formatBadgeText = prob.gradingMode === "function_signature" ? "CODING (FUNC)" : "CODING (STDIN)"
@@ -2033,16 +2134,16 @@ function MyProblemsList({
                     )}
                   </button>
                   <span>•</span>
-                  <span>{prob.submissionCount} Submission(s)</span>
+                  <span>{prob.submissionCount ?? 0} Submission(s)</span>
                   <span>•</span>
-                  <span>{new Date(prob.createdAt).toLocaleDateString()}</span>
+                  <span>{prob.createdAt && new Date(prob.createdAt).toLocaleDateString()}</span>
                 </div>
               </div>
 
               <div className="flex items-center gap-2 self-end sm:self-center shrink-0">
                 <Button
                   size="sm"
-                  onClick={() => onSelectProblem(prob.id, prob.isDbProblem)}
+                  onClick={() => onSelectProblem(prob.id, Boolean(prob.isDbProblem))}
                   className={`text-xs font-medium rounded-full cursor-pointer transition-colors ${
                     isSelected
                       ? "bg-black text-white hover:bg-zinc-800"

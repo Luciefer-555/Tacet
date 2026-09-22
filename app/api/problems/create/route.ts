@@ -5,6 +5,7 @@ import Company from '@/models/company';
 import Class from '@/models/class';
 import { syncProblemNode } from '@/lib/graphSync';
 import { requireAuth, AuthError } from '@/lib/auth';
+import { validateCollegeIds } from '@/lib/collegeTargeting';
 
 export const runtime = 'nodejs';
 
@@ -43,6 +44,11 @@ export async function POST(req: Request) {
         { status: 403 }
       );
     }
+    const collegeTargeting = await validateCollegeIds(body.collegeIds);
+    if (!collegeTargeting.valid) {
+      return NextResponse.json({ success: false, error: collegeTargeting.error }, { status: 400 });
+    }
+    body.collegeIds = collegeTargeting.ids;
   } else if (session.role === 'mentor') {
     if (body.collegeId && body.collegeId !== session.collegeId) {
       return NextResponse.json(
@@ -107,6 +113,7 @@ export async function POST(req: Request) {
     language: problemFormat === 'coding' ? body.language : undefined,
     testCases: problemFormat === 'coding' ? (body.testCases ?? []) : [],
     companyId: session.role === 'hiring_manager' ? session.companyId : undefined,
+    collegeIds: session.role === 'hiring_manager' ? body.collegeIds : undefined,
     collegeId: session.role === 'mentor' ? session.collegeId : undefined,
     classId: session.role === 'mentor' && body.classId ? body.classId : undefined,
     timeLimit: body.timeLimit ? Number(body.timeLimit) : undefined,
