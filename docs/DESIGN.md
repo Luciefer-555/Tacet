@@ -74,6 +74,7 @@ Motion in use (landing only): dither WebGL background, `DecryptedText` scramble 
 | Features / CTA | `components/features-3.tsx` (`#why-tacet`), `components/call-to-action.tsx` | |
 | Lanyard + card | `components/lanyard-with-controls.tsx`, `components/card-template.tsx` | |
 | Role-aware problem page | `components/pages/problem-statements.tsx` | Student, hiring manager and mentor share it |
+| Student Classes page | `components/pages/classes.tsx` | Top-level student Classes tab; reuses `StudentClassJoinBar` for join code, password, status, and enrolled-class display |
 | Add Problem form | inside `problem-statements.tsx` | Format selector first, then conditional fields |
 | Stats dashboard | `components/pages/wrapped-dashboard.tsx` | Single warm theme; canvas export |
 | Profile | `components/pages/profile.tsx` | Tag input for skills |

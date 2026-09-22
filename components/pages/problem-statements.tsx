@@ -45,7 +45,7 @@ import {
 import CodeMirror from "@uiw/react-codemirror"
 import { python } from "@codemirror/lang-python"
 import { java } from "@codemirror/lang-java"
-import { MentorClassesSection, StudentClassJoinBar, TimedTestController } from "@/components/classes-hub"
+import { MentorClassesSection, TimedTestController } from "@/components/classes-hub"
 import { DbProblemEditor } from "@/components/db-problem-editor"
 import { buildSqlSeed, DATASET_MAX_BYTES, parseCsv, parseMongoJson, type DatasetColumn, type DatasetType } from "@/lib/datasetParser"
 
@@ -437,9 +437,6 @@ function StudentView() {
 
   return (
     <div className="space-y-8">
-      {/* ── Campus Classes Bar ── */}
-      <StudentClassJoinBar />
-
       <Card className="rounded-2xl border border-[#E8E2D9] bg-white p-6 shadow-sm">
         <div className="mb-4">
           <h2 className="font-serif text-2xl font-normal tracking-tight text-[#1A1A1A]">Available Problems</h2>

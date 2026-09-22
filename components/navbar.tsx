@@ -82,6 +82,19 @@ export default function Navbar({ currentPage = "dashboard", onNavigate }: Navbar
               >
                 Problem Statements
               </button>
+              {user?.role === "student" && (
+                <button
+                  type="button"
+                  onClick={() => handleNavigate("classes")}
+                  className={`text-sm tracking-wide font-medium transition-colors cursor-pointer py-1 ${
+                    currentPage === "classes"
+                      ? "text-[#1A1A1A] border-b-2 border-[#1A1A1A]"
+                      : "text-[#78716C] hover:text-[#1A1A1A]"
+                  }`}
+                >
+                  Classes
+                </button>
+              )}
             </nav>
           )}
         </div>

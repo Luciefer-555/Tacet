@@ -192,6 +192,8 @@ DbProblem creation accepts the existing `schemaDefinition` string. The form can 
 
 DbProblem creation verifies a SQL reference query with the in-process `executeSqlQuery` sql.js sandbox. It no longer depends on the ranking-service HTTP endpoint being reachable during form save; graded student submissions continue through the existing server grading pipeline.
 
+The authenticated shell is a client-side page switcher in `app/page.tsx`. Students have Dashboard, Problem Statements, and Classes tabs; `components/pages/classes.tsx` owns the existing `StudentClassJoinBar` flow, while Problem Statements starts at Available Problems.
+
 ### ranking-service (FastAPI, internal)
 
 | Endpoint | Purpose |
