@@ -4,11 +4,12 @@ import fs from 'fs/promises';
 import { connectToDatabase } from '@/lib/mongodb';
 import Company from '@/models/company';
 import { requireAuth, AuthError } from '@/lib/auth';
+import { ALLOWED_UPLOAD_EXTENSIONS, hasValidUploadSignature } from '@/lib/uploadSecurity';
 
 export const runtime = 'nodejs';
 
 const UPLOAD_DIR = path.join(process.cwd(), 'uploads', 'company-logos');
-const ALLOWED_IMAGE_TYPES = ['png', 'jpg', 'jpeg', 'webp', 'svg'];
+const ALLOWED_IMAGE_TYPES: string[] = ALLOWED_UPLOAD_EXTENSIONS.filter((ext) => ['png', 'jpg', 'jpeg', 'webp'].includes(ext));
 const MAX_LOGO_SIZE_BYTES = 5 * 1024 * 1024; // 5MB limit
 
 export async function POST(req: Request) {
@@ -73,12 +74,16 @@ export async function POST(req: Request) {
     );
   }
 
+  const buffer = Buffer.from(await logoFile.arrayBuffer());
+  if (!hasValidUploadSignature(buffer, ext)) {
+    return NextResponse.json({ success: false, error: 'Logo contents do not match the file extension.' }, { status: 400 });
+  }
+
   await connectToDatabase();
 
   await fs.mkdir(UPLOAD_DIR, { recursive: true });
   const sanitizedFilename = `${session.userId}_${Date.now()}.${ext}`;
   const savedFilePath = path.join(UPLOAD_DIR, sanitizedFilename);
-  const buffer = Buffer.from(await logoFile.arrayBuffer());
   await fs.writeFile(savedFilePath, buffer);
   const logoUrl = `/uploads/company-logos/${sanitizedFilename}`;
 

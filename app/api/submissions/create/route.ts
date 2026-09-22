@@ -12,12 +12,13 @@ import TestSession from '@/models/testSession';
 import ClassMembership from '@/models/classMembership';
 import { requireAuth, AuthError } from '@/lib/auth';
 import { syncSubmission } from '@/lib/graphSync';
+import { ALLOWED_UPLOAD_EXTENSIONS, MAX_UPLOAD_SIZE_BYTES, hasValidUploadSignature } from '@/lib/uploadSecurity';
 
 const RANKING_SERVICE_URL = process.env.RANKING_SERVICE_URL ?? 'http://localhost:8001';
 const PISTON_URL = 'https://emkc.org/api/v2/piston/execute';
 const UPLOAD_DIR = path.join(process.cwd(), 'uploads', 'submissions');
-const ALLOWED_FILE_TYPES = ['pdf', 'pptx', 'docx', 'png', 'jpg', 'jpeg'];
-const MAX_FILE_SIZE_BYTES = 15 * 1024 * 1024; // 15MB cap
+const ALLOWED_FILE_TYPES: string[] = [...ALLOWED_UPLOAD_EXTENSIONS];
+const MAX_FILE_SIZE_BYTES = MAX_UPLOAD_SIZE_BYTES;
 
 const textOnlySchema = z.object({
   problemId: z.string().min(1, 'problemId is required'),
@@ -94,6 +95,9 @@ export async function POST(req: Request) {
       fileType = ext;
 
       const buffer = Buffer.from(await file.arrayBuffer());
+      if (!hasValidUploadSignature(buffer, ext)) {
+        return NextResponse.json({ success: false, error: 'File contents do not match the file extension.' }, { status: 400 });
+      }
 
       await fs.mkdir(UPLOAD_DIR, { recursive: true });
       const savedFilename = `${session.userId}_${Date.now()}.${ext}`;
