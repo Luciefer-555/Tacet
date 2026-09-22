@@ -139,6 +139,7 @@ function ScoreBadge({ score }: { score: number }) {
 // ═══════════════════════════════════════════════════════════════════════════
 
 function StudentView() {
+  const { isLoggedIn, isLoading: authLoading } = useAuth()
   // — Submission form state —
   const [problemId, setProblemId] = useState("")
   const [textContent, setTextContent] = useState("")
@@ -224,14 +225,16 @@ function StudentView() {
   const [mineError, setMineError] = useState<string | null>(null)
 
   useEffect(() => {
-    fetchMine()
-  }, [])
+    if (authLoading) return
+    if (isLoggedIn) fetchMine()
+    else setLoadingMine(false)
+  }, [authLoading, isLoggedIn])
 
   async function fetchMine() {
     setLoadingMine(true)
     setMineError(null)
     try {
-      const res = await fetch("/api/submissions/mine")
+      const res = await fetch("/api/submissions/mine", { credentials: "include", cache: "no-store" })
       if (!res.ok) {
         const json = await res.json().catch(() => ({}))
         throw new Error(json.error ?? "Failed to load your submissions.")
