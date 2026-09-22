@@ -144,7 +144,8 @@ This inventory was generated from the current filesystem (`app/api/**/route.ts` 
 | GET | `/api/company/me` | yes | Company |
 | POST | `/api/company/onboard` | yes | Company |
 | GET | `/api/db-problems/[problemId]` | yes | DbProblem |
-| POST | `/api/db-problems/[problemId]/preview` | student | DbProblem (read-only preview) |
+| GET | `/api/db-problems/[problemId]/seed` | student | DbProblem seed data only |
+| POST | `/api/db-problems/[problemId]/mongo-preview` | student | Mongo DbProblem read-only preview |
 | POST | `/api/db-problems/create` | yes | Company, DbProblem |
 | POST | `/api/db-submissions/create` | yes | DbProblem, DbSubmission |
 | GET | `/api/db-submissions/for-problem/[problemId]` | yes | DbProblem, DbSubmission, User |
@@ -183,7 +184,9 @@ This inventory was generated from the current filesystem (`app/api/**/route.ts` 
 
 For `GET /api/problems`, students receive only `{ id, title, format, companyName, className, postedAt }`, scoped to targeted company problems or approved same-college class assignments. `GET /api/problems/[id]` and `GET /api/db-problems/[problemId]` apply the same scope; student responses never include answer keys, hidden tests, rubrics, or dataset internals. Hiring managers and mentors retain the existing management list shape.
 
-`POST /api/db-problems/[problemId]/preview` accepts `{ query }` for an authorized, visible student problem and returns `{ success, results, error }`. It does not create a Submission or DbSubmission and never loads referenceQuery/expectedResult. SQL previews use the same read-only validator and SQLite `PRAGMA query_only`; Mongo previews use the existing rejected-operator checks and ephemeral `tmp_eval_*` collection path. `DbProblemEditor` renders the read-only schema/collection browser, CodeMirror query editor, Run preview output, and inline errors; Submit remains the existing graded path.
+`DbProblemEditor` loads SQL seed data from `GET /api/db-problems/[problemId]/seed`, which selects only `dbType` and the existing `schemaDefinition` after applying the student visibility scope. It lazily loads `sql.js` and `/sql-wasm.wasm`, creates the browser SQLite database from that exact schema/fixture string, and runs `db.exec(query)` locally. The server-side graded Submit path is unchanged and receives the same `schemaDefinition`, so preview and grading use the same DDL and rows. SQL Run never creates a submission or calls an API route.
+
+Mongo Run remains server-side through `POST /api/db-problems/[problemId]/mongo-preview`, using the existing rejected-operator checks and ephemeral `tmp_eval_*` collection path. It does not create a Submission or DbSubmission and never loads referenceQuery/expectedResult. Both preview routes return `{ success, results, error }` and apply student visibility scope.
 
 DbProblem creation accepts the existing `schemaDefinition` string. The form can populate it from one CSV file (one SQL table: inferred `int|float|date|text` columns plus generated DDL/inserts) or one JSON array (Mongo documents), with a 2 MB / 1,000-row cap, editable inferred types, and a first-10-row preview. Manual seed-definition entry remains available.
 

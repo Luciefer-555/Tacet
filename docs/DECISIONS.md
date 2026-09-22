@@ -124,3 +124,8 @@ Format: **Decision · Context · Options · Why · Consequences.** Rationale I i
 - **Decision:** Company problems may store `collegeIds: string[]` selected from real student/mentor college IDs. Empty or missing `collegeIds` preserves backward compatibility and means visible to all colleges. Mentor assignments continue using their existing `collegeId` plus approved class membership scope.
 - **Why:** Hiring managers need explicit multi-college targeting without inventing a separate Colleges collection or hiding legacy company problems.
 - **Consequences:** Student list and direct-detail routes apply the same targeting rule; responses remain a student-safe projection with no answer keys or hidden grading data.
+
+## D-27 Client-side SQL preview with sql.js
+- **Decision:** SQL Run uses lazily loaded sql.js/WASM in the browser, initialized from the same `schemaDefinition` string used by the server grading sandbox. Mongo Run remains a scoped server preview because it uses ephemeral collections.
+- **Why:** Students need instant SQLite feedback without turning practice queries into submissions or adding a network round trip.
+- **Consequences:** The SQL seed route exposes only `dbType` and `schemaDefinition`; Submit remains server-authoritative and unchanged. The bundled WASM asset is loaded only when a SQL editor opens.

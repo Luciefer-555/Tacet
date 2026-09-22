@@ -1,11 +1,12 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import CodeMirror from "@uiw/react-codemirror"
 import { Button } from "@/components/ui/button"
 
 type Column = { name: string; type: string }
 type Props = { dbType: "sql" | "mongodb"; schemaDefinition: string; problemId: string; value: string; onChange: (value: string) => void }
+type SqlDatabase = { exec: (query: string) => { columns: string[]; values: unknown[][] }[]; close: () => void }
 
 function sqlTables(schema: string) {
   const tables: { name: string; columns: Column[] }[] = []
@@ -31,14 +32,45 @@ export function DbProblemEditor({ dbType, schemaDefinition, problemId, value, on
   const [running, setRunning] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [results, setResults] = useState<Record<string, unknown>[]>([])
+  const [loadingDatabase, setLoadingDatabase] = useState(dbType === "sql")
+  const [databaseError, setDatabaseError] = useState<string | null>(null)
+  const sqlDatabase = useRef<SqlDatabase | null>(null)
   const tables = useMemo(() => dbType === "sql" ? sqlTables(schemaDefinition) : mongoFields(schemaDefinition), [dbType, schemaDefinition])
+  useEffect(() => {
+    if (dbType !== "sql") return
+    let cancelled = false
+    setLoadingDatabase(true)
+    setDatabaseError(null)
+    ;(async () => {
+      try {
+        const response = await fetch(`/api/db-problems/${problemId}/seed`)
+        const json = await response.json()
+        if (!response.ok || !json.success) throw new Error(json.error || "Could not load SQL seed data.")
+        const { default: initSqlJs } = await import("sql.js")
+        const SQL = await initSqlJs({ locateFile: () => "/sql-wasm.wasm" })
+        const database = new SQL.Database()
+        database.exec(json.seed.schemaDefinition)
+        if (!cancelled) sqlDatabase.current = database
+        else database.close()
+      } catch (err) { if (!cancelled) setDatabaseError(err instanceof Error ? err.message : "Could not load SQL seed data.") }
+      finally { if (!cancelled) setLoadingDatabase(false) }
+    })()
+    return () => { cancelled = true; sqlDatabase.current?.close(); sqlDatabase.current = null }
+  }, [dbType, problemId])
   const run = async () => {
     setRunning(true); setError(null); setResults([])
     try {
-      const response = await fetch(`/api/db-problems/${problemId}/preview`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ query: value }) })
-      const json = await response.json().catch(() => ({}))
-      if (!response.ok || !json.success) throw new Error(json.error || "Preview failed.")
-      setResults(Array.isArray(json.results) ? json.results : [])
+      if (dbType === "sql") {
+        if (!sqlDatabase.current) throw new Error(databaseError || "SQL preview database is still loading.")
+        const output = sqlDatabase.current.exec(value)
+        const rows = output.flatMap((result) => result.values.map((row) => Object.fromEntries(result.columns.map((column, index) => [column, row[index]]))))
+        setResults(rows)
+      } else {
+        const response = await fetch(`/api/db-problems/${problemId}/mongo-preview`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ query: value }) })
+        const json = await response.json().catch(() => ({}))
+        if (!response.ok || !json.success) throw new Error(json.error || "Preview failed.")
+        setResults(Array.isArray(json.results) ? json.results : [])
+      }
     } catch (err) { setError(err instanceof Error ? err.message : "Preview failed.") }
     finally { setRunning(false) }
   }
@@ -50,7 +82,8 @@ export function DbProblemEditor({ dbType, schemaDefinition, problemId, value, on
     </aside>
     <div className="space-y-3">
       <div className="overflow-hidden rounded-xl border border-[#E8E2D9] shadow-sm"><CodeMirror value={value} onChange={onChange} theme="dark" height="220px" placeholder={dbType === "sql" ? "SELECT * FROM users;" : '{"role":"engineer"}'} /></div>
-      <Button type="button" onClick={run} disabled={running || !value.trim()} className="rounded-full bg-black text-white hover:bg-zinc-800">{running ? "Running…" : "Run"}</Button>
+      <Button type="button" onClick={run} disabled={running || !value.trim() || (dbType === "sql" && loadingDatabase)} className="rounded-full bg-black text-white hover:bg-zinc-800">{running ? "Running…" : loadingDatabase ? "Loading SQLite…" : "Run"}</Button>
+      {databaseError && <pre className="whitespace-pre-wrap rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-800">{databaseError}</pre>}
       {error && <pre className="whitespace-pre-wrap rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-800">{error}</pre>}
       {!error && !results.length && <p className="rounded-xl border border-[#E8E2D9] bg-[#FAF7F2] p-3 text-sm text-[#78716C]">No rows returned.</p>}
       {!error && results.length > 0 && <div className="overflow-x-auto rounded-xl border border-[#E8E2D9]"><table className="min-w-full text-left text-xs"><thead className="bg-[#FAF7F2]"><tr>{keys.map((key) => <th key={key} className="px-3 py-2 font-semibold">{key}</th>)}</tr></thead><tbody>{results.map((row, index) => <tr key={index} className="border-t border-[#E8E2D9]"><td colSpan={0} className="hidden" />{keys.map((key) => <td key={key} className="px-3 py-2 font-mono">{typeof row[key] === "object" ? JSON.stringify(row[key]) : String(row[key] ?? "NULL")}</td>)}</tr>)}</tbody></table></div>}

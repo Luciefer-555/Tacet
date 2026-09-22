@@ -68,6 +68,7 @@ git status --short ; git diff --stat      # before every commit
 - Models: `SANDBOX_MONGODB_URI` is the optional isolated grading DB.
 - Fonts: `font-display` Melodrame (wordmark + hero only), `font-serif` Instrument Serif, `font-sans` Geist, `font-mono` Geist Mono.
 - Brand casing: `TACET` in wordmarks, `Tacet` in prose.
+- SQL DbProblem Run is browser-local sql.js/WASM using the exact stored `schemaDefinition`; Mongo Run remains `mongo-preview` server-side. The SQL seed route must never select answer-key fields.
 - Design: cream `#FAF7F2`, text `#1A1A1A`, accent `#3F3FF3`. Landing is dark on purpose.
 
 ## Known bugs / risks
