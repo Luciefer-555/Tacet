@@ -190,6 +190,8 @@ Mongo Run remains server-side through `POST /api/db-problems/[problemId]/mongo-p
 
 DbProblem creation accepts the existing `schemaDefinition` string. The form can populate it from one CSV file (one SQL table: inferred `int|float|date|text` columns plus generated DDL/inserts) or one JSON array (Mongo documents), with a 2 MB / 1,000-row cap, editable inferred types, and a first-10-row preview. Manual seed-definition entry remains available.
 
+DbProblem creation verifies a SQL reference query with the in-process `executeSqlQuery` sql.js sandbox. It no longer depends on the ranking-service HTTP endpoint being reachable during form save; graded student submissions continue through the existing server grading pipeline.
+
 ### ranking-service (FastAPI, internal)
 
 | Endpoint | Purpose |

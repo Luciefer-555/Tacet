@@ -1,4 +1,6 @@
 import mongoose from 'mongoose';
+import initSqlJs from 'sql.js';
+import path from 'node:path';
 import { connectToDatabase } from './mongodb';
 
 // ponytail: using shared Atlas cluster with throwaway collections; upgrade to SANDBOX_MONGODB_URI when concurrent grading spikes
@@ -71,20 +73,27 @@ export async function executeSqlQuery(params: {
   schemaDefinition: string;
   query: string;
 }): Promise<{ success: boolean; results: any[]; error?: string | null }> {
-  const res = await fetch(`${RANKING_SERVICE_URL}/execute-sql`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      schemaDefinition: params.schemaDefinition,
-      query: params.query,
-    }),
+  const SQL = await initSqlJs({
+    locateFile: (file) => path.join(process.cwd(), 'node_modules', 'sql.js', 'dist', file),
   });
-
-  if (!res.ok) {
-    throw new Error(`SQL execution service returned status ${res.status}`);
+  const database = new SQL.Database();
+  try {
+    database.exec(params.schemaDefinition);
+    const results = database.exec(params.query).flatMap((result) =>
+      result.values.map((row) => Object.fromEntries(
+        result.columns.map((column, index) => [column, row[index]])
+      ))
+    );
+    return { success: true, results, error: null };
+  } catch (error) {
+    return {
+      success: false,
+      results: [],
+      error: error instanceof Error ? error.message : 'SQL query failed.',
+    };
+  } finally {
+    database.close();
   }
-
-  return await res.json();
 }
 
 /**
