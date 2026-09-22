@@ -1,0 +1,29 @@
+---
+description: TACET project essentials. Always applied.
+alwaysApply: true
+---
+
+# TACET rules (short version; full docs in /docs)
+
+Read `docs/MEMORY.md` and `docs/RULES.md` before starting any task.
+
+## Never
+- Print, log, commit or paste secrets or `.env*` contents. Use env var NAMES only.
+- Rename the MongoDB DB (`seeby`), collections, Neo4j labels, connection strings, or the `syncin.vercel.app` URL.
+- Run scripts that write to a database without asking. Read any script before running it.
+- Trust client-supplied identity or role. Every API route authenticates and scopes by role and ownership.
+- Return answer keys to students (`referenceSolution`, `expectedResult`, `referenceQuery`, hidden test cases stay `select:false`).
+- Add hardcoded secret fallbacks. Throw if a required env var is missing.
+- Commit `public/fonts/melodrame.*`, `uploads/`, `.env*`, `node_modules`, `.next`, scratch files.
+- Introduce the names SEBBY, SEEBY, SyncIn or Rhiley in new code or copy.
+
+## Always
+- Brand: `TACET` in wordmarks/headings, `Tacet` in sentences. Agents are Seashell, Shellfish, Sand Flea.
+- Use `AUTH_COOKIE_NAME` / `AUTH_STORAGE_KEY` from `lib/constants/auth.ts`. Parse profile IDs with `/^(syncin|tacet)@/`.
+- Fonts: `font-display` (Melodrame) only for wordmark + landing hero; `font-serif` headings; `font-sans` body; `font-mono` data.
+- Tailwind v4: define tokens in `@theme` in `globals.css`. Don't rely on `tailwind.config.js`.
+- One concern per commit. Check `git diff --stat` before committing.
+- Run `npm run build` and typecheck, then verify in a real browser or with real API calls. Show evidence; never claim "verified" without it.
+- On Windows PowerShell, write a script file instead of long inline `node -e`.
+- Append durable learnings to `docs/MEMORY.md`; log decisions in `docs/DECISIONS.md`; update `docs/TASKS.md`.
+- Stop and wait when told to stop.

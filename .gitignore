@@ -25,3 +25,22 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+/uploads/
+
+# local ranking runtime and cache
+ranking-service/venv/
+ranking-service/.cache/
+**/__pycache__/
+*.py[cod]
+
+# local installers and browser state
+tesseract-setup*.exe
+*.exe
+cookies.txt
+
+# one-off local probes
+scripts/_*.cjs
+scripts/_*.ps1
+
+# fonts
+public/fonts/melodrame.*

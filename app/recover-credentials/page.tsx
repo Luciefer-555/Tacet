@@ -98,17 +98,17 @@ export default function RecoverCredentialsPage() {
       <div className="w-full max-w-lg space-y-8">
         <div className="text-center space-y-2">
           <h1 className="font-alata text-3xl text-white">Recover your credentials</h1>
-          <p className="text-white/70 text-sm font-inter">
+          <p className="text-white/70 text-sm font-sans">
             Generate a short-lived recovery code and verify it to retrieve your profile ID and college ID.
           </p>
         </div>
 
         <section className="rounded-2xl border border-white/20 bg-white/5 p-6 backdrop-blur-lg space-y-6">
           <div className="space-y-4">
-            <h2 className="text-lg font-semibold text-white font-inter">Request recovery code</h2>
+            <h2 className="text-lg font-semibold text-white font-sans">Request recovery code</h2>
             <form onSubmit={handleRequest} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="email-request" className="text-white font-inter text-sm">
+                <Label htmlFor="email-request" className="text-white font-sans text-sm">
                   College email
                 </Label>
                 <Input
@@ -117,17 +117,17 @@ export default function RecoverCredentialsPage() {
                   placeholder="you@college.edu"
                   value={email}
                   onChange={(event) => setEmail(event.target.value)}
-                  className="bg-white/10 border-white/20 text-white placeholder:text-white/50 font-inter focus:border-white/40"
+                  className="bg-white/10 border-white/20 text-white placeholder:text-white/50 font-sans focus:border-white/40"
                 />
               </div>
 
-              <Button type="submit" className="w-full bg-white text-black hover:bg-white/90 font-inter font-semibold py-3">
+              <Button type="submit" className="w-full bg-white text-black hover:bg-white/90 font-sans font-semibold py-3">
                 Send recovery code
               </Button>
 
               {requestStatus.kind !== "idle" && (
                 <p
-                  className={`text-sm rounded-xl px-4 py-3 font-inter ${
+                  className={`text-sm rounded-xl px-4 py-3 font-sans ${
                     requestStatus.kind === "success"
                       ? "border border-emerald-400/40 bg-emerald-400/10 text-emerald-100"
                       : "border border-red-400/40 bg-red-400/10 text-red-100"
@@ -158,10 +158,10 @@ export default function RecoverCredentialsPage() {
 
         <section className="rounded-2xl border border-white/20 bg-white/5 p-6 backdrop-blur-lg space-y-6">
           <div className="space-y-4">
-            <h2 className="text-lg font-semibold text-white font-inter">Verify recovery code</h2>
+            <h2 className="text-lg font-semibold text-white font-sans">Verify recovery code</h2>
             <form onSubmit={handleVerify} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="email-verify" className="text-white font-inter text-sm">
+                <Label htmlFor="email-verify" className="text-white font-sans text-sm">
                   College email
                 </Label>
                 <Input
@@ -170,12 +170,12 @@ export default function RecoverCredentialsPage() {
                   placeholder="you@college.edu"
                   value={email}
                   onChange={(event) => setEmail(event.target.value)}
-                  className="bg-white/10 border-white/20 text-white placeholder:text-white/50 font-inter focus:border-white/40"
+                  className="bg-white/10 border-white/20 text-white placeholder:text-white/50 font-sans focus:border-white/40"
                 />
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="code" className="text-white font-inter text-sm">
+                <Label htmlFor="code" className="text-white font-sans text-sm">
                   Recovery code
                 </Label>
                 <Input
@@ -183,17 +183,17 @@ export default function RecoverCredentialsPage() {
                   placeholder="Enter the 6-digit code"
                   value={code}
                   onChange={(event) => setCode(event.target.value)}
-                  className="bg-white/10 border-white/20 text-white placeholder:text-white/50 font-inter focus:border-white/40"
+                  className="bg-white/10 border-white/20 text-white placeholder:text-white/50 font-sans focus:border-white/40"
                 />
               </div>
 
-              <Button type="submit" className="w-full bg-white text-black hover:bg-white/90 font-inter font-semibold py-3">
+              <Button type="submit" className="w-full bg-white text-black hover:bg-white/90 font-sans font-semibold py-3">
                 Verify code
               </Button>
 
               {verifyStatus.kind !== "idle" && (
                 <p
-                  className={`text-sm rounded-xl px-4 py-3 font-inter ${
+                  className={`text-sm rounded-xl px-4 py-3 font-sans ${
                     verifyStatus.kind === "success"
                       ? "border border-emerald-400/40 bg-emerald-400/10 text-emerald-100"
                       : "border border-red-400/40 bg-red-400/10 text-red-100"
@@ -220,7 +220,7 @@ export default function RecoverCredentialsPage() {
           </div>
         </section>
 
-        <p className="text-center text-sm text-white/60 font-inter">
+        <p className="text-center text-sm text-white/60 font-sans">
           <Link href="/login" className="text-white hover:underline font-semibold">
             Return to login
           </Link>

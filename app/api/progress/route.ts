@@ -1,15 +1,16 @@
-import { NextResponse } from 'next/server';
+﻿import { NextResponse } from 'next/server';
 import { z } from 'zod';
 
 import { connectToDatabase } from '@/lib/mongodb';
 import UserProgress from '@/models/userProgress';
+import { requireAuth, AuthError } from '@/lib/auth';
 
 const allowedOrigin = process.env.CORS_ORIGIN ?? '*';
 const allowedHeaders = 'Content-Type, Authorization';
 const allowedMethods = 'GET, POST, OPTIONS';
 
 const progressSchema = z.object({
-  username: z.string().min(1, 'Username is required'),
+  // username is no longer accepted from the body — identity comes from session
   problemsSolved: z.number().int().min(0).optional(),
   streakDays: z.number().int().min(0).optional(),
   hackathons: z.number().int().min(0).optional(),
@@ -39,12 +40,18 @@ export async function OPTIONS() {
 }
 
 export async function GET(request: Request) {
-  const { searchParams } = new URL(request.url);
-  const username = searchParams.get('username');
-
-  if (!username) {
-    return createErrorResponse('Query parameter "username" is required.', 400);
+  // GET /api/progress is private — a user may only read their OWN progress.
+  // Previously it accepted ?username= from query which allowed anyone to read
+  // any user's stats by passing a different username. Session enforces ownership.
+  let session;
+  try {
+    session = await requireAuth();
+  } catch (err) {
+    if (err instanceof AuthError) return err;
+    throw err;
   }
+
+  const username = session.username;
 
   try {
     await connectToDatabase();
@@ -74,8 +81,17 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  let payload: unknown;
+  let session;
+  try {
+    session = await requireAuth();
+  } catch (err) {
+    if (err instanceof AuthError) return err;
+    throw err;
+  }
 
+  const username = session.username;
+
+  let payload: unknown;
   try {
     payload = await request.json();
   } catch (error) {
@@ -84,18 +100,16 @@ export async function POST(request: Request) {
   }
 
   const parseResult = progressSchema.safeParse(payload);
-
   if (!parseResult.success) {
     return createErrorResponse(parseResult.error.issues[0]?.message ?? 'Invalid request payload.');
   }
 
-  const { username, problemsSolved, streakDays, hackathons, collaborations } = parseResult.data;
+  const { problemsSolved, streakDays, hackathons, collaborations } = parseResult.data;
 
   try {
     await connectToDatabase();
 
     const updateFields: Record<string, unknown> = {};
-
     if (typeof problemsSolved === 'number') updateFields.problemsSolved = problemsSolved;
     if (typeof streakDays === 'number') updateFields.streakDays = streakDays;
     if (typeof hackathons === 'number') updateFields.hackathons = hackathons;

@@ -1,8 +1,9 @@
-import { NextRequest, NextResponse } from 'next/server';
+﻿import { NextRequest, NextResponse } from 'next/server';
 import { Types } from 'mongoose';
 
 import { connectToDatabase } from '@/lib/mongodb';
 import UserProgress from '@/models/userProgress';
+import { requireAuth, AuthError } from '@/lib/auth';
 
 const allowedOrigin = process.env.CORS_ORIGIN ?? '*';
 const allowedHeaders = 'Content-Type, Authorization';
@@ -31,11 +32,18 @@ export async function OPTIONS() {
 }
 
 export async function DELETE(
-  request: NextRequest,
+  _request: NextRequest,
   context: { params: Promise<{ id: string }> }
 ) {
+  let session;
+  try {
+    session = await requireAuth();
+  } catch (err) {
+    if (err instanceof AuthError) return err;
+    throw err;
+  }
+
   const { id: activityId } = await context.params;
-  const username = request.nextUrl.searchParams.get('username');
 
   if (!activityId) {
     return createErrorResponse('Activity ID is required.', 400);
@@ -45,13 +53,15 @@ export async function DELETE(
     return createErrorResponse('Invalid activity ID format.', 400);
   }
 
-  if (!username) {
-    return createErrorResponse('Query parameter "username" is required.', 400);
-  }
+  const username = session.username;
 
   try {
     await connectToDatabase();
 
+    // Ownership check: the filter matches BOTH this user's username AND the specific
+    // activity _id. If the activity belongs to a different user, findOneAndUpdate
+    // returns null and we respond with 404 — the caller cannot delete another user's
+    // activity records even with a valid session.
     const result = await UserProgress.findOneAndUpdate(
       { username, 'recentActivity._id': new Types.ObjectId(activityId) },
       { $pull: { recentActivity: { _id: new Types.ObjectId(activityId) } } },
@@ -59,7 +69,7 @@ export async function DELETE(
     ).lean();
 
     if (!result) {
-      return createErrorResponse('Activity not found.', 404);
+      return createErrorResponse('Activity not found or does not belong to your account.', 404);
     }
 
     return createJsonResponse({ success: true, data: result, message: 'Activity deleted successfully.' });

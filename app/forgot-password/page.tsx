@@ -104,17 +104,17 @@ export default function ForgotPasswordPage() {
       <div className="w-full max-w-lg space-y-8">
         <div className="text-center space-y-2">
           <h1 className="font-alata text-3xl text-white">Reset your password</h1>
-          <p className="text-white/70 text-sm font-inter">
+          <p className="text-white/70 text-sm font-sans">
             Enter your registered email to receive a reset token or use a token below to set a new password.
           </p>
         </div>
 
         <section className="rounded-2xl border border-white/20 bg-white/5 p-6 backdrop-blur-lg space-y-6">
           <div className="space-y-4">
-            <h2 className="text-lg font-semibold text-white font-inter">Request reset token</h2>
+            <h2 className="text-lg font-semibold text-white font-sans">Request reset token</h2>
             <form onSubmit={handleRequest} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="email" className="text-white font-inter text-sm">
+                <Label htmlFor="email" className="text-white font-sans text-sm">
                   College email
                 </Label>
                 <Input
@@ -123,30 +123,30 @@ export default function ForgotPasswordPage() {
                   placeholder="you@college.edu"
                   value={email}
                   onChange={(event) => setEmail(event.target.value)}
-                  className="bg-white/10 border-white/20 text-white placeholder:text-white/50 font-inter focus:border-white/40"
+                  className="bg-white/10 border-white/20 text-white placeholder:text-white/50 font-sans focus:border-white/40"
                 />
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="profileId" className="text-white font-inter text-sm">
+                <Label htmlFor="profileId" className="text-white font-sans text-sm">
                   Profile ID (optional)
                 </Label>
                 <Input
                   id="profileId"
-                  placeholder="syncin@ABC123"
+                  placeholder="tacet@ABC123"
                   value={profileId}
                   onChange={(event) => setProfileId(event.target.value)}
-                  className="bg-white/10 border-white/20 text-white placeholder:text-white/50 font-inter focus:border-white/40"
+                  className="bg-white/10 border-white/20 text-white placeholder:text-white/50 font-sans focus:border-white/40"
                 />
               </div>
 
-              <Button type="submit" className="w-full bg-white text-black hover:bg-white/90 font-inter font-semibold py-3">
+              <Button type="submit" className="w-full bg-white text-black hover:bg-white/90 font-sans font-semibold py-3">
                 Send reset token
               </Button>
 
               {requestStatus.kind !== "idle" && (
                 <p
-                  className={`text-sm rounded-xl px-4 py-3 font-inter ${
+                  className={`text-sm rounded-xl px-4 py-3 font-sans ${
                     requestStatus.kind === "success"
                       ? "border border-emerald-400/40 bg-emerald-400/10 text-emerald-100"
                       : "border border-red-400/40 bg-red-400/10 text-red-100"
@@ -177,10 +177,10 @@ export default function ForgotPasswordPage() {
 
         <section className="rounded-2xl border border-white/20 bg-white/5 p-6 backdrop-blur-lg space-y-6">
           <div className="space-y-4">
-            <h2 className="text-lg font-semibold text-white font-inter">Set a new password</h2>
+            <h2 className="text-lg font-semibold text-white font-sans">Set a new password</h2>
             <form onSubmit={handleReset} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="token" className="text-white font-inter text-sm">
+                <Label htmlFor="token" className="text-white font-sans text-sm">
                   Reset token
                 </Label>
                 <Input
@@ -188,12 +188,12 @@ export default function ForgotPasswordPage() {
                   placeholder="Paste your reset token"
                   value={token}
                   onChange={(event) => setToken(event.target.value)}
-                  className="bg-white/10 border-white/20 text-white placeholder:text-white/50 font-inter focus:border-white/40"
+                  className="bg-white/10 border-white/20 text-white placeholder:text-white/50 font-sans focus:border-white/40"
                 />
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="password" className="text-white font-inter text-sm">
+                <Label htmlFor="password" className="text-white font-sans text-sm">
                   New password
                 </Label>
                 <Input
@@ -202,12 +202,12 @@ export default function ForgotPasswordPage() {
                   placeholder="••••••••"
                   value={password}
                   onChange={(event) => setPassword(event.target.value)}
-                  className="bg-white/10 border-white/20 text-white placeholder:text-white/50 font-inter focus:border-white/40"
+                  className="bg-white/10 border-white/20 text-white placeholder:text-white/50 font-sans focus:border-white/40"
                 />
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="confirmPassword" className="text-white font-inter text-sm">
+                <Label htmlFor="confirmPassword" className="text-white font-sans text-sm">
                   Confirm password
                 </Label>
                 <Input
@@ -216,17 +216,17 @@ export default function ForgotPasswordPage() {
                   placeholder="••••••••"
                   value={confirmPassword}
                   onChange={(event) => setConfirmPassword(event.target.value)}
-                  className="bg-white/10 border-white/20 text-white placeholder:text-white/50 font-inter focus:border-white/40"
+                  className="bg-white/10 border-white/20 text-white placeholder:text-white/50 font-sans focus:border-white/40"
                 />
               </div>
 
-              <Button type="submit" className="w-full bg-white text-black hover:bg-white/90 font-inter font-semibold py-3">
+              <Button type="submit" className="w-full bg-white text-black hover:bg-white/90 font-sans font-semibold py-3">
                 Reset password
               </Button>
 
               {resetStatus.kind !== "idle" && (
                 <p
-                  className={`text-sm rounded-xl px-4 py-3 font-inter ${
+                  className={`text-sm rounded-xl px-4 py-3 font-sans ${
                     resetStatus.kind === "success"
                       ? "border border-emerald-400/40 bg-emerald-400/10 text-emerald-100"
                       : "border border-red-400/40 bg-red-400/10 text-red-100"
@@ -239,7 +239,7 @@ export default function ForgotPasswordPage() {
           </div>
         </section>
 
-        <p className="text-center text-sm text-white/60 font-inter">
+        <p className="text-center text-sm text-white/60 font-sans">
           <Link href="/login" className="text-white hover:underline font-semibold">
             Return to login
           </Link>

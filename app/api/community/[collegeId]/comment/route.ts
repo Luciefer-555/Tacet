@@ -1,15 +1,15 @@
-import crypto from 'node:crypto';
+﻿import crypto from 'node:crypto';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 
 import { connectToDatabase } from '@/lib/mongodb';
 import CollegeCommunity from '@/models/collegeCommunity';
+import { requireAuth, AuthError } from '@/lib/auth';
 
 export const runtime = 'nodejs';
 
 const commentSchema = z.object({
   postId: z.string().min(1, 'postId is required'),
-  authorProfileId: z.string().min(1, 'authorProfileId is required'),
   text: z.string().trim().min(1, 'Comment cannot be empty').max(1000, 'Comment is too long'),
 });
 
@@ -44,6 +44,23 @@ export async function POST(
   request: Request,
   context: { params: Promise<{ collegeId: string }> }
 ) {
+  let session;
+  try {
+    session = await requireAuth();
+  } catch (err) {
+    if (err instanceof AuthError) return err;
+    throw err;
+  }
+
+  const { collegeId } = await context.params;
+
+  if (session.collegeId !== collegeId) {
+    return NextResponse.json(
+      { success: false, error: 'You can only interact with your own college community.' },
+      { status: 403 }
+    );
+  }
+
   try {
     const payload = await request.json();
     const parseResult = commentSchema.safeParse(payload);
@@ -53,9 +70,8 @@ export async function POST(
       return NextResponse.json({ success: false, error: issue?.message ?? 'Invalid request body' }, { status: 400 });
     }
 
-    const { postId, authorProfileId, text } = parseResult.data;
+    const { postId, text } = parseResult.data;
 
-    const { collegeId } = await context.params;
     await connectToDatabase();
 
     const community = await CollegeCommunity.findOne({ collegeId });
@@ -70,7 +86,7 @@ export async function POST(
 
     targetPost.comments.push({
       commentId: crypto.randomUUID(),
-      authorProfileId,
+      authorProfileId: session.profileId,
       text,
       createdAt: new Date(),
     });

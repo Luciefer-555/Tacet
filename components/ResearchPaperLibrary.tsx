@@ -62,7 +62,7 @@ export default function ResearchPaperLibrary() {
         {researchPapers.map((paper) => (
           <div 
             key={paper.id}
-            className="bg-gray-900 p-6 rounded-lg border border-gray-800 shadow-lg hover:shadow-xl transition-shadow duration-300"
+            className="bg-card p-6 rounded-md border border-[#2A3D5C] hover:border-[#C8A84B]/40 transition-colors"
           >
             <h3 className="text-xl font-bold text-white mb-2">{paper.title}</h3>
             <p className="text-gray-300 text-sm mb-3">{paper.authors}</p>

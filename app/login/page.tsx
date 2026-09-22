@@ -1,21 +1,21 @@
 "use client"
 
-import type React from "react"
-
-import { useState } from "react"
+import React, { useState } from "react"
+import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useAuth } from "../providers"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import GlareHover from "@/components/effects/glare-hover"
-import Link from "next/link"
+import { Eye, EyeOff } from "lucide-react"
+import Logo from "@/components/logo"
 
 export default function LoginPage() {
   const [email, setEmail] = useState("")
   const [profileId, setProfileId] = useState("")
   const [collegeId, setCollegeId] = useState("")
   const [password, setPassword] = useState("")
+  const [showPassword, setShowPassword] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [status, setStatus] = useState<{ kind: "error" | "success"; message: string } | null>(null)
 
@@ -26,11 +26,10 @@ export default function LoginPage() {
     e.preventDefault()
     setStatus(null)
 
-    if (!email.trim() || !profileId.trim() || !collegeId.trim()) {
-      setStatus({ kind: "error", message: "Email, profile ID, and college ID are required." })
+    if (!profileId.trim()) {
+      setStatus({ kind: "error", message: "Profile ID is required." })
       return
     }
-
     if (!password.trim()) {
       setStatus({ kind: "error", message: "Password is required." })
       return
@@ -38,21 +37,37 @@ export default function LoginPage() {
 
     setSubmitting(true)
     try {
-      const now = new Date().toISOString()
+      const res = await fetch("/api/user/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: email.trim() || undefined,
+          profileId: profileId.trim(),
+          collegeId: collegeId.trim() || undefined,
+          password,
+        }),
+      })
+
+      const json = await res.json()
+      if (!res.ok || !json.success) {
+        throw new Error(json.error ?? "Sign-in failed. Please try again.")
+      }
+
+      const serverUser = json.user as { username: string; role: string }
       login({
-        username: profileId.trim(),
+        username: serverUser.username,
         profileId: profileId.trim(),
         collegeId: collegeId.trim(),
-        collegeName: "Developer College",
+        collegeName: "",
         skills: [],
-        role: "student",
-        joinedAt: now,
-        email: email.trim(),
+        role: serverUser.role,
+        joinedAt: new Date().toISOString(),
+        email: email.trim() || undefined,
       })
+
       setStatus({ kind: "success", message: "Signed in successfully." })
       router.push("/")
     } catch (error) {
-      console.error("Login failed", error)
       setStatus({ kind: "error", message: error instanceof Error ? error.message : "An unexpected error occurred." })
     } finally {
       setSubmitting(false)
@@ -60,46 +75,117 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#0d0d0f] to-[#1a1a1c] flex items-center justify-center px-4 py-8">
-      <div className="w-full max-w-md">
-        {/* Logo */}
-        <div className="text-center mb-8">
-          <h1 className="font-alata text-3xl font-bold text-primary">SyncIn</h1>
+    <div className="dark min-h-screen flex font-sans bg-zinc-950 text-white">
+      {/* Left Marketing Panel with Signature Blue */}
+      <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden" style={{ backgroundColor: "#3F3FF3" }}>
+        <div className="relative z-10 flex flex-col justify-between w-full px-12 py-12">
+          {/* TACET Wordmark */}
+          <div className="flex items-center">
+            <Logo size={36} decorative className="mr-3 text-white" />
+            <h1 className="text-2xl font-bold tracking-wider font-display text-white">TACET</h1>
+          </div>
+
+          {/* Marketing Copy */}
+          <div className="flex-1 flex flex-col justify-center max-w-lg">
+            <h2 className="text-4xl font-semibold text-white mb-6 leading-tight">
+              Solve real problems. Get ranked. Get hired.
+            </h2>
+            <p className="text-white/90 text-lg leading-relaxed">
+              Log in to solve genuine company challenges, see your multi-agent AI score, and get fast-tracked to hiring teams.
+            </p>
+          </div>
+
+          {/* Footer Info */}
+          <div className="flex justify-between items-center text-white/70 text-sm">
+            <span>&copy; {new Date().getFullYear()} Tacet. All rights reserved.</span>
+            <span className="hover:text-white transition-colors cursor-pointer">Privacy Policy</span>
+          </div>
         </div>
+      </div>
 
-        {/* Glass Card with Glare effect */}
-        <GlareHover
-          width="100%"
-          height="auto"
-          background="rgba(255, 255, 255, 0.08)"
-          borderRadius="1.5rem"
-          borderColor="rgba(255, 255, 255, 0.2)"
-          glareOpacity={0.35}
-          glareAngle={-35}
-          glareSize={220}
-          transitionDuration={800}
-          className="w-full place-items-stretch backdrop-blur-lg shadow-2xl"
-        >
-          <div className="w-full rounded-2xl border border-white/20 bg-white/5 p-8">
-            <h2 className="text-2xl font-bold text-white mb-6 font-inter">Welcome Back</h2>
+      {/* Right Form Panel with Dark Inversion */}
+      <div className="w-full lg:w-1/2 flex items-center justify-center p-6 sm:p-12 bg-zinc-950">
+        <div className="w-full max-w-md space-y-8">
+          {/* Mobile Logo */}
+          <div className="lg:hidden text-center mb-6">
+            <Logo size={36} decorative className="mx-auto mb-2 text-white" />
+            <h1 className="text-xl font-bold tracking-wider font-display text-white">TACET</h1>
+          </div>
 
-            <form onSubmit={handleLogin} className="space-y-5">
-              {status && (
-                <p
-                  className={`rounded-xl px-4 py-3 text-sm font-inter ${
-                    status.kind === "error"
-                      ? "border border-red-400/40 bg-red-400/10 text-red-100"
-                      : "border border-emerald-400/40 bg-emerald-400/10 text-emerald-100"
-                  }`}
-                >
-                  {status.message}
-                </p>
-              )}
+          <div className="space-y-6">
+            <div className="space-y-2 text-center lg:text-left">
+              <h2 className="text-3xl font-bold text-white tracking-tight">Welcome Back</h2>
+              <p className="text-zinc-300 text-sm">
+                Enter your credentials to access your account.
+              </p>
+            </div>
 
-              {/* Email */}
+            {status && (
+              <p
+                className={`rounded-xl px-4 py-3 text-sm ${
+                  status.kind === "error"
+                    ? "border border-red-500/30 bg-red-500/10 text-red-300"
+                    : "border border-emerald-500/30 bg-emerald-500/10 text-emerald-300"
+                }`}
+              >
+                {status.message}
+              </p>
+            )}
+
+            <form onSubmit={handleLogin} className="space-y-4">
+              {/* Profile ID (Required) */}
               <div className="space-y-2">
-                <Label htmlFor="email" className="text-white font-inter">
-                  Email address
+                <Label htmlFor="profileId" className="text-sm font-medium text-zinc-200">
+                  Profile ID <span className="text-[#3F3FF3]">*</span>
+                </Label>
+                <Input
+                  id="profileId"
+                  placeholder="tacet@ABC123"
+                  value={profileId}
+                  onChange={(e) => setProfileId(e.target.value)}
+                  className="h-12 bg-zinc-900 border-zinc-800 text-white placeholder:text-zinc-500 rounded-lg focus-visible:border-[#3F3FF3] focus-visible:ring-0"
+                />
+              </div>
+
+              {/* Password (Required) */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="password" className="text-sm font-medium text-zinc-200">
+                    Password <span className="text-[#3F3FF3]">*</span>
+                  </Label>
+                  <Link
+                    href="/forgot-password"
+                    className="text-xs hover:underline"
+                    style={{ color: "#3F3FF3" }}
+                  >
+                    Forgot password?
+                  </Link>
+                </div>
+                <div className="relative">
+                  <Input
+                    id="password"
+                    type={showPassword ? "text" : "password"}
+                    placeholder="Enter password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="h-12 pr-10 bg-zinc-900 border-zinc-800 text-white placeholder:text-zinc-500 rounded-lg focus-visible:border-[#3F3FF3] focus-visible:ring-0"
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="absolute right-0 top-0 h-full px-3 py-2 text-zinc-400 hover:text-white hover:bg-transparent cursor-pointer"
+                    onClick={() => setShowPassword(!showPassword)}
+                  >
+                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </Button>
+                </div>
+              </div>
+
+              {/* Email Address (Optional) */}
+              <div className="space-y-2">
+                <Label htmlFor="email" className="text-sm font-medium text-zinc-300">
+                  Email address <span className="text-zinc-500 text-xs">(optional)</span>
                 </Label>
                 <Input
                   id="email"
@@ -107,83 +193,54 @@ export default function LoginPage() {
                   placeholder="you@example.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="bg-white/10 border-white/20 text-white placeholder:text-white/50 font-inter focus:border-white/40"
+                  className="h-12 bg-zinc-900 border-zinc-800 text-white placeholder:text-zinc-500 rounded-lg focus-visible:border-[#3F3FF3] focus-visible:ring-0"
                 />
               </div>
 
-              {/* Profile ID */}
+              {/* College ID (Optional) */}
               <div className="space-y-2">
-                <Label htmlFor="profileId" className="text-white font-inter">
-                  Profile ID
-                </Label>
-                <Input
-                  id="profileId"
-                  placeholder="syncin@ABC123"
-                  value={profileId}
-                  onChange={(e) => setProfileId(e.target.value)}
-                  className="bg-white/10 border-white/20 text-white placeholder:text-white/50 font-inter focus:border-white/40"
-                />
-              </div>
-
-              {/* College ID */}
-              <div className="space-y-2">
-                <Label htmlFor="collegeId" className="text-white font-inter text-sm">
-                  College ID
+                <Label htmlFor="collegeId" className="text-sm font-medium text-zinc-300">
+                  College ID <span className="text-zinc-500 text-xs">(optional)</span>
                 </Label>
                 <Input
                   id="collegeId"
                   placeholder="e.g., NITD123"
                   value={collegeId}
                   onChange={(e) => setCollegeId(e.target.value)}
-                  className="bg-white/10 border-white/20 text-white placeholder:text-white/50 font-inter focus:border-white/40"
+                  className="h-12 bg-zinc-900 border-zinc-800 text-white placeholder:text-zinc-500 rounded-lg focus-visible:border-[#3F3FF3] focus-visible:ring-0"
                 />
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="password" className="text-white font-inter text-sm">
-                  Password
-                </Label>
-                <Input
-                  id="password"
-                  type="password"
-                  placeholder="••••••••"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="bg-white/10 border-white/20 text-white placeholder:text-white/50 font-inter focus:border-white/40"
-                />
+              {/* Helper Links */}
+              <div className="text-xs text-zinc-400">
+                <Link href="/recover-credentials" className="text-zinc-400 hover:text-zinc-200 underline">
+                  Lost your profile or college ID?
+                </Link>
               </div>
 
+              {/* Submit Button */}
               <Button
                 type="submit"
-                className="w-full bg-white text-black hover:bg-white/90 font-inter font-semibold py-6 rounded-lg transition-all duration-200 hover:scale-105 active:scale-95"
                 disabled={submitting}
+                className="w-full h-12 text-sm font-semibold text-white rounded-lg transition-opacity hover:opacity-90 shadow-none cursor-pointer mt-2"
+                style={{ backgroundColor: "#3F3FF3" }}
               >
-                {submitting ? "Signing in..." : "Sign In"}
+                {submitting ? "Signing in..." : "Log In"}
               </Button>
-
-              <div className="text-center text-xs text-white/60 font-inter space-y-1">
-                <p>
-                  <Link href="/forgot-password" className="text-white/80 hover:text-white underline">
-                    Forgot your password?
-                  </Link>
-                </p>
-                <p>
-                  <Link href="/recover-credentials" className="text-white/80 hover:text-white underline">
-                    Lost your profile or college ID?
-                  </Link>
-                </p>
-              </div>
             </form>
 
-            {/* Sign Up Link */}
-            <div className="mt-6 text-center text-white/70 font-inter text-sm">
-              Don&apos;t have an account?{" "}
-              <Link href="/signup" className="text-white hover:underline font-semibold">
-                Create one
+            <div className="text-center text-sm text-zinc-400 pt-2">
+              Don't have an account?{" "}
+              <Link
+                href="/signup"
+                className="font-semibold hover:underline"
+                style={{ color: "#3F3FF3" }}
+              >
+                Register Now.
               </Link>
             </div>
           </div>
-        </GlareHover>
+        </div>
       </div>
     </div>
   )

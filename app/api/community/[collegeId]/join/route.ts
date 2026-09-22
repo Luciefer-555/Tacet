@@ -1,14 +1,14 @@
-import { NextRequest, NextResponse } from 'next/server';
+﻿import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 
 import { connectToDatabase } from '@/lib/mongodb';
 import CollegeCommunity from '@/models/collegeCommunity';
 import User from '@/models/user';
+import { requireAuth, AuthError } from '@/lib/auth';
 
 export const runtime = 'nodejs';
 
 const joinSchema = z.object({
-  profileId: z.string().trim().min(1, 'profileId is required'),
   collegeName: z.string().trim().optional(),
 });
 
@@ -16,23 +16,39 @@ export async function POST(
   request: NextRequest,
   context: { params: Promise<{ collegeId: string }> }
 ) {
+  let session;
   try {
-    const payload = await request.json();
-    const parseResult = joinSchema.safeParse(payload);
+    session = await requireAuth();
+  } catch (err) {
+    if (err instanceof AuthError) return err;
+    throw err;
+  }
 
-    if (!parseResult.success) {
-      const issue = parseResult.error.issues[0];
-      return NextResponse.json({ success: false, error: issue?.message ?? 'Invalid request body' }, { status: 400 });
+  const { collegeId } = await context.params;
+  const collegeIdTrimmed = collegeId.trim();
+
+  if (session.collegeId !== collegeIdTrimmed) {
+    return NextResponse.json(
+      { success: false, error: 'You can only interact with your own college community.' },
+      { status: 403 }
+    );
+  }
+
+  try {
+    let collegeName: string | undefined;
+    try {
+      const payload = await request.json();
+      const parseResult = joinSchema.safeParse(payload);
+      if (parseResult.success) {
+        collegeName = parseResult.data.collegeName;
+      }
+    } catch {
+      // Body is optional
     }
-
-    const { profileId, collegeName } = parseResult.data;
-
-    const { collegeId } = await context.params;
-    const collegeIdTrimmed = collegeId.trim();
 
     await connectToDatabase();
 
-    const user = await User.findOne({ profileId, collegeId: collegeIdTrimmed }).lean();
+    const user = await User.findOne({ profileId: session.profileId, collegeId: collegeIdTrimmed }).lean();
     if (!user) {
       return NextResponse.json(
         { success: false, error: 'No matching user found for that profile ID and college.' },
@@ -46,7 +62,7 @@ export async function POST(
       { collegeId: collegeIdTrimmed },
       {
         $setOnInsert: { collegeId: collegeIdTrimmed, collegeName: derivedCollegeName, members: [], posts: [] },
-        $addToSet: { members: profileId },
+        $addToSet: { members: session.profileId },
         $set: { collegeName: derivedCollegeName },
       },
       { new: true, upsert: true }

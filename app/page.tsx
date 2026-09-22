@@ -1,27 +1,23 @@
 "use client"
 
 import { useAuth } from "./providers"
-import { useRouter } from "next/navigation"
 import Navbar from "@/components/navbar"
-import Sidebar from "@/components/sidebar"
 import HomePage from "@/components/home-page"
-import Dashboard from "@/components/pages/dashboard"
-import ProgressTracker from "@/components/pages/progress-tracker"
 import ProblemStatements from "@/components/pages/problem-statements"
-import Hackathons from "@/components/pages/hackathons"
-import CollaborationHub from "@/components/pages/collaboration-hub"
-import Resources from "@/components/pages/resources"
-import Community from "@/components/pages/community"
 import Profile from "@/components/pages/profile"
-import AboutSyncIn from "@/components/pages/about-syncin"
-import ChatInterface from "@/components/chat/ChatInterface"
-import Prep from "@/components/pages/prep"
+import AboutTacet from "@/components/pages/about-tacet"
+import WrappedDashboard from "@/components/pages/wrapped-dashboard"
+import { HeroSplash } from "@/components/hero-splash"
 import { useState } from "react"
 
 export default function Page() {
   const { isLoggedIn } = useAuth()
-  const router = useRouter()
   const [currentPage, setCurrentPage] = useState("dashboard")
+  const [heroDone, setHeroDone] = useState(false)
+
+  if (!heroDone) {
+    return <HeroSplash onComplete={() => setHeroDone(true)} />
+  }
 
   const renderPage = () => {
     if (!isLoggedIn) {
@@ -30,37 +26,26 @@ export default function Page() {
 
     switch (currentPage) {
       case "dashboard":
-        return <Dashboard />
-      case "progress-tracker":
-        return <ProgressTracker />
+      case "wrapped":
+        return <WrappedDashboard />
       case "problem-statements":
         return <ProblemStatements />
-      case "hackathons":
-        return <Hackathons />
-      case "collaboration-hub":
-        return <CollaborationHub />
-      case "resources":
-        return <Resources />
-      case "community":
-        return <Community />
-      case "prep":
-        return <Prep />
-      case "assistant":
-        return <ChatInterface />
       case "profile":
         return <Profile />
       case "about":
-        return <AboutSyncIn />
+        return <AboutTacet />
       default:
-        return <Dashboard />
+        return <WrappedDashboard />
     }
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <Navbar />
-      {isLoggedIn && <Sidebar currentPage={currentPage} onNavigate={setCurrentPage} />}
-      <main className={`${isLoggedIn ? "ml-64" : ""} pt-16`}>{renderPage()}</main>
+    <div className={`min-h-screen ${isLoggedIn ? "bg-[#FAF7F2] text-[#1A1A1A]" : "bg-background"}`}>
+      {isLoggedIn && <Navbar currentPage={currentPage} onNavigate={setCurrentPage} />}
+      <main className={isLoggedIn ? "pt-16 min-h-screen bg-[#FAF7F2] text-[#1A1A1A]" : ""}>
+        {renderPage()}
+      </main>
     </div>
   )
 }
+

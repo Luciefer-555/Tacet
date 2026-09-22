@@ -59,8 +59,8 @@ const CollegeCommunitySchema = new Schema<CollegeCommunityDocument>(
   }
 );
 
-CollegeCommunitySchema.index({ collegeId: 1 });
 CollegeCommunitySchema.index({ 'posts.postId': 1 });
+
 
 export const CollegeCommunity: Model<CollegeCommunityDocument> =
   mongoose.models.CollegeCommunity ||

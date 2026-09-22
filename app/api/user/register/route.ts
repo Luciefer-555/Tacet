@@ -5,19 +5,23 @@ import bcrypt from 'bcryptjs';
 import { connectToDatabase } from '@/lib/mongodb';
 import User from '@/models/user';
 import CollegeCommunity from '@/models/collegeCommunity';
+import { syncStudentNode } from '@/lib/graphSync';
+import { createVerificationToken } from '@/lib/auth';
+import { sendVerificationEmail } from '@/lib/email';
 
 export const runtime = 'nodejs';
 
 const registerSchema = z.object({
   username: z.string().min(2, 'Username must be at least 2 characters long'),
-  collegeId: z.string().trim().min(1, 'collegeId is required'),
-  collegeName: z.string().trim().min(1, 'collegeName is required'),
+  collegeId: z.string().trim().optional().default('CAMPUS_DEFAULT'),
+  collegeName: z.string().trim().optional().default('Default Campus'),
+  companyId: z.string().trim().optional(),
   email: z.string().email('Invalid email address'),
   phone: z
     .string()
     .regex(/^[+\d][\d\s-]{6,}$/i, 'Phone must be at least 7 characters and contain only digits, spaces, + or -'),
   skills: z.array(z.string().trim()).max(25).optional().default([]),
-  role: z.enum(['student', 'mentor', 'admin']).optional().default('student'),
+  role: z.enum(['student', 'mentor', 'admin', 'hiring_manager']).optional().default('student'),
   password: z
     .string()
     .min(8, 'Password must be at least 8 characters long')
@@ -30,7 +34,7 @@ const DIGITS = '0123456789';
 function generateProfileId(): string {
   const letters = Array.from({ length: 3 }, () => LETTERS[Math.floor(Math.random() * LETTERS.length)]).join('');
   const digits = Array.from({ length: 3 }, () => DIGITS[Math.floor(Math.random() * DIGITS.length)]).join('');
-  return `syncin@${letters}${digits}`;
+  return `tacet@${letters}${digits}`;
 }
 
 async function generateUniqueProfileId(): Promise<string> {
@@ -60,18 +64,20 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: false, error: issue?.message ?? 'Invalid request body' }, { status: 400 });
     }
 
-    const { username, collegeId, collegeName, email, phone, skills, role, password } = parseResult.data;
+    const { username, collegeId, collegeName, companyId, email, phone, skills, role, password } = parseResult.data;
 
     const normalizedEmail = email.toLowerCase();
-    const isCollegeEmail = /@(.*\.)?(edu|ac)(\.\w+)?$/i.test(normalizedEmail);
-    if (!isCollegeEmail) {
-      return NextResponse.json(
-        { success: false, error: 'Please provide a valid college email address.' },
-        { status: 400 },
-      );
+    if (role === 'student') {
+      const isCollegeEmail = /@(.*\.)?(edu|ac)(\.\w+)?$/i.test(normalizedEmail);
+      if (!isCollegeEmail) {
+        return NextResponse.json(
+          { success: false, error: 'Please provide a valid college email address.' },
+          { status: 400 },
+        );
+      }
     }
 
-    if (!process.env.MONGO_URI) {
+    if (!process.env.MONGO_URI && !process.env.MONGODB_URI) {
       return NextResponse.json(
         { success: false, error: 'Database connection is not configured. Please set MONGO_URI in your environment.' },
         { status: 503 },
@@ -94,6 +100,7 @@ export async function POST(request: Request) {
       profileId,
       collegeId,
       collegeName,
+      companyId: companyId || (role === 'hiring_manager' ? `COMP_${profileId.replace(/^(syncin|tacet)@/, '')}` : undefined),
       email: normalizedEmail,
       phone,
       skills,
@@ -101,15 +108,32 @@ export async function POST(request: Request) {
       passwordHash,
     });
 
-    await CollegeCommunity.findOneAndUpdate(
-      { collegeId },
-      {
-        $setOnInsert: { collegeName, members: [], posts: [] },
-        $addToSet: { members: profileId },
-        $set: { collegeName },
-      },
-      { new: true, upsert: true }
-    );
+    if (user.role === 'hiring_manager' || user.role === 'mentor') {
+      const token = await createVerificationToken(String((user as any)._id));
+      const verificationLink = `${process.env.APP_BASE_URL ?? 'http://localhost:3000'}/verify-email?token=${token}`;
+      await sendVerificationEmail(user.email, verificationLink, user.role);
+      user.emailVerificationTokenIssuedAt = new Date();
+      await user.save();
+    }
+
+    if ((user.role === 'student' || user.role === 'mentor') && collegeId) {
+      await CollegeCommunity.findOneAndUpdate(
+        { collegeId },
+        {
+          $setOnInsert: { posts: [] },
+          $addToSet: { members: profileId },
+          $set: { collegeName },
+        },
+        { new: true, upsert: true }
+      );
+    }
+
+    // Write-through: sync student to Neo4j graph (best-effort)
+    if (role === 'student') {
+      syncStudentNode(user as any).catch((err) => {
+        console.error('Neo4j graph sync failed for student:', err);
+      });
+    }
 
     return NextResponse.json({
       success: true,

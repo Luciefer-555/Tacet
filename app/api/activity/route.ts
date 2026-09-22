@@ -1,16 +1,17 @@
-import { NextResponse } from 'next/server';
+﻿import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { Types } from 'mongoose';
 
 import { connectToDatabase } from '@/lib/mongodb';
 import UserProgress from '@/models/userProgress';
+import { requireAuth, AuthError } from '@/lib/auth';
 
 const allowedOrigin = process.env.CORS_ORIGIN ?? '*';
 const allowedHeaders = 'Content-Type, Authorization';
 const allowedMethods = 'POST, OPTIONS';
 
 const activitySchema = z.object({
-  username: z.string().min(1, 'Username is required'),
+  // username is no longer accepted from the body — identity comes from session
   activityId: z.string().optional(),
   activity: z.object({
     title: z.string().min(1, 'Activity title is required'),
@@ -40,7 +41,6 @@ function getObjectId(activityId: string) {
   if (!Types.ObjectId.isValid(activityId)) {
     return null;
   }
-
   return new Types.ObjectId(activityId);
 }
 
@@ -50,8 +50,17 @@ export async function OPTIONS() {
 }
 
 export async function POST(request: Request) {
-  let payload: unknown;
+  let session;
+  try {
+    session = await requireAuth();
+  } catch (err) {
+    if (err instanceof AuthError) return err;
+    throw err;
+  }
 
+  const username = session.username;
+
+  let payload: unknown;
   try {
     payload = await request.json();
   } catch (error) {
@@ -60,12 +69,11 @@ export async function POST(request: Request) {
   }
 
   const parseResult = activitySchema.safeParse(payload);
-
   if (!parseResult.success) {
     return createErrorResponse(parseResult.error.issues[0]?.message ?? 'Invalid request payload.');
   }
 
-  const { username, activity, activityId } = parseResult.data;
+  const { activity, activityId } = parseResult.data;
 
   try {
     await connectToDatabase();
@@ -77,6 +85,9 @@ export async function POST(request: Request) {
         return createErrorResponse('Invalid activityId format.', 400);
       }
 
+      // Ownership is implicitly enforced: the filter includes both username and
+      // the specific activity _id, so the update only succeeds if this session's
+      // user actually owns that activity record.
       const updatedDocument = await UserProgress.findOneAndUpdate(
         {
           username,
@@ -93,7 +104,7 @@ export async function POST(request: Request) {
       ).lean();
 
       if (!updatedDocument) {
-        return createErrorResponse('Activity not found for provided activityId.', 404);
+        return createErrorResponse('Activity not found or does not belong to your account.', 404);
       }
 
       return createJsonResponse({ success: true, data: updatedDocument, message: 'Activity updated successfully.' });

@@ -1,36 +1,32 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { z } from 'zod';
+﻿import { NextRequest, NextResponse } from 'next/server';
 
 import { connectToDatabase } from '@/lib/mongodb';
 import CollegeCommunity from '@/models/collegeCommunity';
+import { requireAuth, AuthError } from '@/lib/auth';
 
 export const runtime = 'nodejs';
-
-const deleteSchema = z.object({
-  requesterRole: z.enum(['admin', 'mentor', 'student']).default('student'),
-});
 
 export async function DELETE(
   request: NextRequest,
   context: { params: Promise<{ collegeId: string; postId: string }> }
 ) {
+  let session;
+  try {
+    session = await requireAuth();
+  } catch (err) {
+    if (err instanceof AuthError) return err;
+    throw err;
+  }
+
+  if (session.role !== 'admin') {
+    return NextResponse.json(
+      { success: false, error: 'Only admins can delete posts' },
+      { status: 403 }
+    );
+  }
+
   try {
     const { collegeId, postId } = await context.params;
-
-    const parseResult = deleteSchema.safeParse({
-      requesterRole: request.headers.get('x-syncin-role') ?? 'student',
-    });
-
-    const { requesterRole } = parseResult.success
-      ? parseResult.data
-      : { requesterRole: 'student' };
-
-    if (requesterRole !== 'admin') {
-      return NextResponse.json(
-        { success: false, error: 'Only admins can delete posts' },
-        { status: 403 }
-      );
-    }
 
     await connectToDatabase();
 
