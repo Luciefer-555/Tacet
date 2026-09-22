@@ -133,8 +133,6 @@ This inventory was generated from the current filesystem (`app/api/**/route.ts` 
 
 | Methods | Path | Auth | Models touched |
 |---|---|---|---|
-| DELETE / OPTIONS | `/api/activity/[id]` | yes | UserProgress |
-| OPTIONS / POST | `/api/activity` | yes | UserProgress |
 | POST | `/api/classes/[classId]/join` | yes | Class, ClassMembership |
 | POST | `/api/classes/[classId]/requests/[studentId]/approve` | yes | Class, ClassMembership |
 | POST | `/api/classes/[classId]/requests/[studentId]/reject` | yes | Class, ClassMembership |
@@ -143,11 +141,6 @@ This inventory was generated from the current filesystem (`app/api/**/route.ts` 
 | GET | `/api/classes/[classId]/students/[studentId]/overview` | yes | Class, ClassMembership, DbProblem, DbSubmission, Problem, Submission, User |
 | POST | `/api/classes/create` | yes | Class |
 | GET | `/api/classes` | yes | Class, ClassMembership |
-| POST | `/api/community/[collegeId]/comment` | yes | CollegeCommunity |
-| POST | `/api/community/[collegeId]/join` | yes | CollegeCommunity, User |
-| GET | `/api/community/[collegeId]/members` | no | CollegeCommunity, User |
-| DELETE | `/api/community/[collegeId]/post/[postId]` | yes | CollegeCommunity |
-| GET / POST | `/api/community/[collegeId]` | yes | CollegeCommunity |
 | GET | `/api/company/me` | yes | Company |
 | POST | `/api/company/onboard` | yes | Company |
 | GET | `/api/db-problems/[problemId]` | yes | DbProblem |
@@ -160,8 +153,6 @@ This inventory was generated from the current filesystem (`app/api/**/route.ts` 
 | POST | `/api/problems/create-with-variants` | yes | Company, Problem |
 | POST | `/api/problems/create` | yes | Class, Company, Problem |
 | GET | `/api/problems` | yes | DbProblem, DbSubmission, Problem, Submission |
-| GET / OPTIONS / POST | `/api/progress` | yes | UserProgress |
-| GET | `/api/questions` | no | Question (inline model; no `models/question.ts`) |
 | GET | `/api/stats/hiring-manager` | yes | DbProblem, DbSubmission, Problem, Submission |
 | GET | `/api/stats/mentor` | yes | DbProblem, DbSubmission, Problem, Submission |
 | GET | `/api/stats/student` | yes | DbProblem, DbSubmission, Problem, Submission, User |
@@ -184,10 +175,9 @@ This inventory was generated from the current filesystem (`app/api/**/route.ts` 
 | POST | `/api/user/resend-verification` | yes | User |
 | POST | `/api/user/reset-password` | no | User |
 | POST | `/api/user/verify-email` | no | User |
-| GET | `/api/mcqs/[category]` | no | — (reads `gui/mcqs/*.json`) |
-| GET | `/uploads/[...path]` | no | — (reads files under `uploads/`) |
+| GET | `/uploads/[...path]` | yes | Submission, Problem (submissions only) |
 
-`/api/pages-router` does not exist in the current filesystem. The file-backed uploads are written by `/api/company/onboard` and `/api/submissions/create`, then served by `/uploads/[...path]`; the handler currently has no authentication or ownership check.
+`/api/pages-router` does not exist in the current filesystem. The file-backed uploads are written by `/api/company/onboard` and `/api/submissions/create`, then served by `/uploads/[...path]`; serving requires authentication and applies the existing submission ownership scopes.
 
 ### ranking-service (FastAPI, internal)
 
@@ -287,6 +277,8 @@ Test account used in scripts: `syncin@TESTSTUDENT1` (password lives in scripts; 
 | Tesseract weak on low-res handwriting | Accepted |
 | Shellfish variants still use a uniform "You are the [C-level] at [Company]" opener | Accepted model-quality ceiling |
 | Auto-promotion is opportunistic (checked on next API call), not a background job | By design |
+| Upload files are local filesystem storage and are not durable across stateless deployments | Open; move to object storage before multi-instance production |
+| Upload serving validates path containment, symlinks, ownership, headers, and file signatures | Fixed in the upload hardening commit |
 
 ## 12. What to revisit as it grows
 

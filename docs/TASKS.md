@@ -120,3 +120,4 @@ Effort: **S** = under half a day, **M** = 1–2 days, **L** = 3+ days. Update st
 - Documentation set (this folder)
 - **T-04 Git hygiene:** the reported +1.37M lines came from the untracked `ranking-service/venv/` plus local Tesseract installers; the tracked diff was 6,523 additions / 7,212 deletions. Ignored local runtime, cache, uploads, installers, cookies, and probes.
 - **T-05 Scratch-script cleanup:** read and deleted the Mongo status check, ranking generator check, password-reset script, and login probe. The password-reset script would have changed five users' password hashes and marked their emails verified; it was never run. Login remains unconfirmed because Codex cannot resolve the Mongo SRV record.
+- **Upload security hardening:** authenticated, scoped serving; traversal/symlink containment; safe headers; SVG removal; writer-side size and magic-byte checks; dead legacy routes removed.

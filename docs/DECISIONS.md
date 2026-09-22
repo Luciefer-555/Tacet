@@ -114,3 +114,8 @@ Format: **Decision · Context · Options · Why · Consequences.** Rationale I i
 ## D-24 Docs live in `/docs`, and agents read them first
 - **Why:** Agent tools reset context between sessions and quotas force tool switching. The docs are portable context.
 - **Consequences:** Keep MEMORY and TASKS current at the end of every task (see FLOW Part B).
+
+## D-25 Authenticated upload serving and content validation
+- **Decision:** Require a session before upload path handling; serve only the two allowed directories and allowlisted extensions; enforce lexical and realpath containment; scope submission reads to the submitter or the existing problem ownership scopes; validate writer magic bytes and size.
+- **Why:** Upload URLs are bearer-like file references and must not disclose submissions, traverse the filesystem, serve SVG, or accept disguised content.
+- **Consequences:** Anonymous requests fail before database access; unauthorized submission requests return 404; logos use short private caching and submissions use `private, no-store`.

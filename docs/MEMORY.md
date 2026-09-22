@@ -50,6 +50,7 @@ TACET (formerly SyncIn → SEBBY → Rhiley/TACET) is a Next.js + MongoDB + Neo4
 19. **Auto-promotion of dropped-connection drafts is opportunistic,** not a background job. Runs on the next relevant API call after deadline + 5 min.
 20. **Failed Shellfish variants** (`generationFailed: true`) must never be assigned to students.
 21. **Codex's sandbox has no outbound DNS for the Mongo SRV lookup.** It cannot verify MongoDB connectivity from this environment.
+22. **The old `uploads/` ignore pattern hid `app/uploads/` from search and commits.** The repository now uses `/uploads/` for the runtime upload root, while `app/uploads/[...path]/route.ts` remains tracked and must stay included.
 
 ## Commands that work
 ```
